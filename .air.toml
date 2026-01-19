@@ -1,0 +1,34 @@
+# .air.toml 配置文件
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# 构建开发模式文件
+cmd = "go build -tags dev -o ./tmp/app.exe ."
+# 二进制文件
+bin = "./tmp/app.exe"
+# 监听这些文件扩展名
+include_ext = ["go", "env"]
+# 忽略这些文件夹
+exclude_dir = ["frontend", "build", "tmp", "vendor", "static", "docs", "data", "data/audit_archives", "data/uploads"]
+# 停止时清理
+clean_on_exit = true
+# 发送系统通知
+send_interrupt = true
+# 在启动后延迟N毫秒
+delay = 1000
+
+[log]
+# 显示日志时间
+time = true
+
+[color]
+# 自定义输出颜色
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# 退出时删除tmp目录
+clean_on_exit = true 

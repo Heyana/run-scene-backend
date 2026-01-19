@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .title }}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    
+    .back-link {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      z-index: 1000;
+      background: rgba(45, 55, 72, 0.8);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      background: rgba(45, 55, 72, 1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+  </style>
+  <script type="module" src="https://unpkg.com/rapidoc/dist/rapidoc-min.js"></script>
+</head>
+<body>
+  <a href="/api/docs" class="back-link">返回文档中心</a>
+  
+  <rapi-doc
+    spec-url="{{ .specURL }}"
+    theme="dark"
+    render-style="read"
+    show-header="true"
+    allow-spec-url-load="false"
+    allow-spec-file-load="false"
+    heading-text="智慧工厂 API"
+    allow-authentication="true"
+    allow-try="true"
+    persist-auth="true"
+    regular-font="Roboto, Helvetica, sans-serif"
+    mono-font="Roboto Mono, monospace"
+    primary-color="#3182CE"
+    bg-color="#1A202C"
+    text-color="#F7FAFC"
+    header-color="#2D3748"
+    nav-text-color="#CBD5E0"
+    nav-hover-text-color="#FFFFFF"
+    nav-hover-bg-color="#2D3748"
+    nav-accent-color="#3182CE"
+  > </rapi-doc>
+</body>
+</html> 

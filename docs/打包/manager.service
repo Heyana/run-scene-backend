@@ -1,0 +1,55 @@
+# ============================================
+# 【配置说明】
+# 修改项目名称时，需要替换以下所有 test_template 为你的项目名
+# 如: sed -i 's/test_template/your_project_name/g' test_template.service
+# ============================================
+
+[Unit]
+Description=test_template - Go项目服务
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/project/test_template
+
+# 基础配置
+Environment="APP_ENV=production"
+
+# 服务器配置（可选，config.yaml中有默认值）
+# Environment="SERVER_PORT=23347"
+# Environment="LOG_LEVEL=info"
+
+# CDN配置（根据实际情况修改）
+# Environment="CDN_BASE_URL=https://your-domain.com/cdn/"
+# Environment="CDN_BASE_PATH=https://your-domain.com/cdn/"
+
+# 存储路径配置
+Environment="RESOURCE_PATH=/root/project/test_template/static/cdn"
+Environment="DB_PATH=/root/project/test_template/data/app.db"
+# Environment="PRODUCT_DB_PATH=/root/project/test_template/data/product.db"
+
+# COS备份配置
+# Environment="COS_ENABLED=true"
+# Environment="COS_SECRET_ID=YOUR_SECRET_ID"
+# Environment="COS_SECRET_KEY=YOUR_SECRET_KEY"
+# Environment="COS_BUCKET_URL=YOUR_BUCKET_URL"
+# Environment="COS_REGION=ap-shanghai"
+
+ExecStart=/root/project/test_template/test_template
+
+# 重启策略
+Restart=on-failure
+RestartSec=5s
+
+# 优雅关闭配置
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# 日志输出
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

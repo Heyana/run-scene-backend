@@ -1,0 +1,106 @@
+{
+  "schemes": ["http"],
+  "swagger": "2.0",
+  "info": {
+    "description": "工厂管理系统 API 文档",
+    "title": "工厂管理系统 API",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "API Support",
+      "url": "http://www.example.com/support",
+      "email": "support@example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0"
+  },
+  "host": "localhost:23355",
+  "basePath": "/",
+  "paths": {
+    "/api/users": {
+      "get": {
+        "description": "获取系统中的所有用户列表",
+        "produces": ["application/json"],
+        "tags": ["用户管理"],
+        "summary": "获取所有用户",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/models.User"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "description": "根据ID获取用户信息",
+        "produces": ["application/json"],
+        "tags": ["用户管理"],
+        "summary": "获取指定用户",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "用户ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/models.User"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "models.User": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "BasicAuth": {
+      "type": "basic"
+    }
+  }
+}

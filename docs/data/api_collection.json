@@ -1,0 +1,126 @@
+{
+  "info": {
+    "name": "智慧工厂管理系统API",
+    "description": "智慧工厂管理系统的所有API接口，包括用户、产品和组件管理",
+    "version": "1.0.0"
+  },
+  "collections": [
+    {
+      "name": "产品管理",
+      "description": "产品相关API测试集",
+      "folders": [],
+      "requests": [
+        {
+          "name": "获取产品列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/products",
+          "params": [
+            { "name": "page", "value": "1" },
+            { "name": "pageSize", "value": "10" },
+            { "name": "name", "value": "" },
+            { "name": "code", "value": "" },
+            { "name": "type", "value": "" }
+          ]
+        },
+        {
+          "name": "获取产品类型列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/products/types"
+        },
+        {
+          "name": "创建产品",
+          "method": "POST",
+          "url": "{{baseUrl}}/api/products",
+          "body": {
+            "raw": "{\n  \"name\": \"智能电机A型\",\n  \"code\": \"MT-A001\",\n  \"type\": \"电机\",\n  \"specification\": \"220V 50Hz\",\n  \"weight\": 2.5,\n  \"price\": 1299.99,\n  \"remark\": \"高性能智能电机\",\n  \"imagePath\": \"/images/motor-a.jpg\"\n}",
+            "type": "json"
+          }
+        },
+        {
+          "name": "获取产品详情",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/products/1"
+        },
+        {
+          "name": "更新产品信息",
+          "method": "PUT",
+          "url": "{{baseUrl}}/api/products/1",
+          "body": {
+            "raw": "{\n  \"name\": \"智能电机A型升级版\",\n  \"code\": \"MT-A001-UP\",\n  \"type\": \"电机\",\n  \"specification\": \"220V 50Hz 高效能\",\n  \"weight\": 2.2,\n  \"price\": 1499.99,\n  \"remark\": \"升级版高性能智能电机\",\n  \"imagePath\": \"/images/motor-a-upgrade.jpg\"\n}",
+            "type": "json"
+          }
+        },
+        {
+          "name": "删除产品",
+          "method": "DELETE",
+          "url": "{{baseUrl}}/api/products/1"
+        }
+      ]
+    },
+    {
+      "name": "组件管理",
+      "description": "组件相关API测试集",
+      "folders": [],
+      "requests": [
+        {
+          "name": "获取组件列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/products/1/components"
+        },
+        {
+          "name": "获取组件类型列表",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/components/types"
+        },
+        {
+          "name": "创建组件",
+          "method": "POST",
+          "url": "{{baseUrl}}/api/products/1/components",
+          "body": {
+            "raw": "{\n  \"name\": \"电机轴承\",\n  \"code\": \"MTP-001\",\n  \"type\": \"机械零件\",\n  \"quantity\": 2,\n  \"thickness\": 0.5,\n  \"width\": 3.0,\n  \"length\": 3.0,\n  \"attributes\": {\n    \"material\": \"高碳钢\",\n    \"maxRPM\": 5000,\n    \"lubricationType\": \"油脂\"\n  }\n}",
+            "type": "json"
+          }
+        },
+        {
+          "name": "获取组件详情",
+          "method": "GET",
+          "url": "{{baseUrl}}/api/products/1/components/1"
+        },
+        {
+          "name": "更新组件",
+          "method": "PUT",
+          "url": "{{baseUrl}}/api/products/1/components/1",
+          "body": {
+            "raw": "{\n  \"name\": \"高性能电机轴承\",\n  \"code\": \"MTP-001-HP\",\n  \"type\": \"机械零件\",\n  \"quantity\": 4,\n  \"thickness\": 0.5,\n  \"width\": 3.0,\n  \"length\": 3.0,\n  \"attributes\": {\n    \"material\": \"合金钢\",\n    \"maxRPM\": 7000,\n    \"lubricationType\": \"高温油脂\"\n  }\n}",
+            "type": "json"
+          }
+        },
+        {
+          "name": "删除组件",
+          "method": "DELETE",
+          "url": "{{baseUrl}}/api/products/1/components/1"
+        }
+      ]
+    }
+  ],
+  "environments": [
+    {
+      "name": "开发环境",
+      "variables": [
+        {
+          "name": "baseUrl",
+          "value": "http://localhost:8080"
+        }
+      ]
+    },
+    {
+      "name": "测试环境",
+      "variables": [
+        {
+          "name": "baseUrl",
+          "value": "http://test-server:8080"
+        }
+      ]
+    }
+  ]
+}

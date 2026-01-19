@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .title }}</title>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Roboto, sans-serif;
+    }
+    
+    .header {
+      background-color: #2d3748;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      margin: 0;
+    }
+    
+    .header a {
+      color: white;
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    
+    .header a:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    redoc {
+      display: block;
+      height: calc(100vh - 60px);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>智慧工厂 API 文档 - ReDoc</h1>
+    <a href="/api/docs">返回文档中心</a>
+  </div>
+  
+  <redoc spec-url="{{ .specURL }}"></redoc>
+  
+  <script src="https://cdn.jsdelivr.net/npm/redoc@2.0.0/bundles/redoc.standalone.js"></script>
+</body>
+</html> 

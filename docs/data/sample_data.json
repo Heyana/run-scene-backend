@@ -1,0 +1,78 @@
+{
+  "products": [
+    {
+      "name": "智能电机A型",
+      "code": "MT-A001",
+      "type": "电机",
+      "specification": "220V 50Hz",
+      "weight": 2.5,
+      "price": 1299.99,
+      "remark": "高性能智能电机",
+      "imagePath": "/images/motor-a.jpg"
+    },
+    {
+      "name": "传感器模块B1",
+      "code": "SN-B001",
+      "type": "传感器",
+      "specification": "12V 精度0.01mm",
+      "weight": 0.3,
+      "price": 299.5,
+      "remark": "高精度位移传感器",
+      "imagePath": "/images/sensor-b1.jpg"
+    },
+    {
+      "name": "工业控制器C2",
+      "code": "CT-C002",
+      "type": "控制器",
+      "specification": "工业级防护",
+      "weight": 1.2,
+      "price": 3599.0,
+      "remark": "多功能工业控制器",
+      "imagePath": "/images/controller-c2.jpg"
+    }
+  ],
+  "components": [
+    {
+      "name": "电机轴承",
+      "code": "MTP-001",
+      "type": "机械零件",
+      "quantity": 2,
+      "thickness": 0.5,
+      "width": 3.0,
+      "length": 3.0,
+      "attributes": {
+        "material": "高碳钢",
+        "maxRPM": 5000,
+        "lubricationType": "油脂"
+      }
+    },
+    {
+      "name": "控制电路板",
+      "code": "CTP-002",
+      "type": "电子元件",
+      "quantity": 1,
+      "thickness": 0.2,
+      "width": 10.0,
+      "length": 15.0,
+      "attributes": {
+        "chipset": "STM32",
+        "voltage": "5V",
+        "interfaces": ["UART", "I2C", "SPI"]
+      }
+    },
+    {
+      "name": "外壳盖板",
+      "code": "CSP-003",
+      "type": "结构件",
+      "quantity": 1,
+      "thickness": 1.0,
+      "width": 20.0,
+      "length": 30.0,
+      "attributes": {
+        "material": "铝合金",
+        "color": "银灰色",
+        "waterproofGrade": "IP65"
+      }
+    }
+  ]
+}

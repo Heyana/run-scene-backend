@@ -1,0 +1,16 @@
+{
+  "name": "go_wails_project_manager",
+  "version": "1.0.0",
+  "description": "## About",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": " wails build -trimpath -ldflags=\"-s -w\"  -upx ",
+    "doc": "swag init -g docs/swagger.go",
+    "set-sign": "codesign --force --deep --sign - ./build/bin/gift-manager.app",
+    "gobuild": "go build -trimpath -ldflags=\"-s -w\"   main.go"
+  },
+  "keywords": [],
+  "author": "Heyana",
+  "license": "ISC"
+}
