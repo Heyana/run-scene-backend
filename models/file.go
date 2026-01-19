@@ -36,72 +36,36 @@ type File struct {
 }
 
 // AfterFind GORM 钩子：查询后自动拼接完整 URL
-// 注意：GORM v2 需要接收 *gorm.DB 参数
 func (f *File) AfterFind(tx *gorm.DB) error {
-	// 如果启用了 NAS，优先使用 NAS 路径
-	if config.AppConfig != nil && config.AppConfig.Texture.NASEnabled && config.AppConfig.Texture.NASPath != "" {
-		var relativePath string
-		
-		// 1. 优先从 CDN 路径中提取相对路径
-		if f.CDNPath != "" {
-			// CDN 路径格式: http://192.168.3.39:23359/textures/stone_floor/arm_2k.jpg
-			// 提取 stone_floor/arm_2k.jpg 部分
-			parts := strings.Split(f.CDNPath, "/textures/")
-			if len(parts) > 1 {
-				relativePath = parts[1]
-			}
-		}
-		
-		// 2. 如果 CDN 路径没有，从本地路径提取
-		if relativePath == "" && f.LocalPath != "" {
-			// 将 Windows 路径分隔符转换为正斜杠
-			cleanPath := strings.ReplaceAll(f.LocalPath, "\\", "/")
-			
-			// 移除开头的 ./ 或 /
-			cleanPath = strings.TrimPrefix(cleanPath, "./")
-			cleanPath = strings.TrimPrefix(cleanPath, "/")
-			
-			// 移除 "static/" 或 "static/textures/" 前缀
-			cleanPath = strings.TrimPrefix(cleanPath, "static/textures/")
-			cleanPath = strings.TrimPrefix(cleanPath, "static/")
-			cleanPath = strings.TrimPrefix(cleanPath, "textures/")
-			
-			relativePath = cleanPath
-		}
-		
-		// 3. 拼接 NAS 路径
-		if relativePath != "" {
-			// 不直接返回 NAS 路径，而是返回通过后端代理的 HTTP 路径
-			// 这样浏览器可以正常访问
-			f.FullURL = "/textures/" + relativePath
+	// 如果 CDNPath 不为空，拼接完整 URL
+	if f.CDNPath != "" {
+		// 如果 CDNPath 已经是完整 URL（以 http 开头），直接使用
+		if strings.HasPrefix(f.CDNPath, "http://") || strings.HasPrefix(f.CDNPath, "https://") {
+			f.FullURL = f.CDNPath
 			return nil
 		}
-	}
-	
-	// 如果没有启用 NAS，使用 CDN 路径
-	if f.CDNPath != "" {
-		f.FullURL = f.CDNPath
-		return nil
-	}
-	
-	// 回退到本地路径
-	if f.LocalPath != "" {
-		cleanPath := strings.ReplaceAll(f.LocalPath, "\\", "/")
-		cleanPath = strings.TrimPrefix(cleanPath, "./")
-		cleanPath = strings.TrimPrefix(cleanPath, "/")
-		cleanPath = strings.TrimPrefix(cleanPath, "static/textures/")
-		cleanPath = strings.TrimPrefix(cleanPath, "static/")
-		cleanPath = strings.TrimPrefix(cleanPath, "textures/")
 		
-		// 回退到默认的网络共享路径
-		f.FullURL = "//192.168.3.10/project/editor_v2/static/textures/" + cleanPath
+		// 否则拼接 base_url + cdn_path
+		if config.AppConfig != nil && config.AppConfig.Texture.BaseURL != "" {
+			// 确保 base_url 和 cdn_path 之间有且只有一个斜杠
+			baseURL := strings.TrimSuffix(config.AppConfig.Texture.BaseURL, "/")
+			cdnPath := strings.TrimPrefix(f.CDNPath, "/")
+			f.FullURL = baseURL + "/" + cdnPath
+			return nil
+		}
+		
+		// 如果没有配置 base_url，使用相对路径
+		f.FullURL = "/textures/" + strings.TrimPrefix(f.CDNPath, "/")
 		return nil
 	}
 	
-	// 最后使用原始 URL
+	// 如果 CDNPath 为空，尝试使用 OriginalURL
 	if f.OriginalURL != "" {
 		f.FullURL = f.OriginalURL
+		return nil
 	}
 	
+	// 最后回退到空字符串
+	f.FullURL = ""
 	return nil
 }

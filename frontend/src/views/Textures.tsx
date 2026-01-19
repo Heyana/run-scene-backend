@@ -13,6 +13,7 @@ import {
   Row,
   Col,
   Image,
+  Select,
 } from "ant-design-vue";
 import {
   ReloadOutlined,
@@ -29,6 +30,7 @@ export default defineComponent({
   setup() {
     const textureStore = useTextureStore();
     const keyword = ref("");
+    const syncStatus = ref<number | undefined>(undefined);
     const currentPage = ref(1);
     const pageSize = ref(10);
 
@@ -39,7 +41,7 @@ export default defineComponent({
       // 优先查找 preview 类型的文件
       const preview = files.find((f) => f.file_type === "thumbnail");
       if (preview && preview.full_url) {
-        return preview.cdn_path;
+        return preview.full_url;
       }
 
       // 否则返回第一个图片文件
@@ -47,7 +49,7 @@ export default defineComponent({
         ["jpg", "jpeg", "png", "webp"].includes(f.format?.toLowerCase()),
       );
       if (firstImage && firstImage.full_url) {
-        return firstImage.cdn_path;
+        return firstImage.full_url;
       }
 
       return "";
@@ -144,7 +146,7 @@ export default defineComponent({
         customRender: ({ record }: { record: any }) => {
           const files = record.files || [];
 
-          // return <Tag color="blue">{files.length} 个</Tag>;
+          return <Tag color="blue">{files.length} 个</Tag>;
           // 过滤掉预览图，只显示其他图片
           const otherImages = files.filter((f: TextureFile) => {
             // 排除 preview 类型
@@ -164,7 +166,7 @@ export default defineComponent({
               {otherImages.map((file: TextureFile) => (
                 <Image
                   key={file.id}
-                  src={file.cdn_path}
+                  src={file.full_url}
                   width={40}
                   height={40}
                   style={{
@@ -173,7 +175,7 @@ export default defineComponent({
                     cursor: "pointer",
                   }}
                   preview={{
-                    src: file.cdn_path,
+                    src: file.full_url,
                   }}
                 />
               ))}
@@ -233,11 +235,18 @@ export default defineComponent({
         page: currentPage.value,
         pageSize: pageSize.value,
         keyword: keyword.value || undefined,
+        syncStatus: syncStatus.value,
       });
     };
 
     const handleSearch = (value: string) => {
       keyword.value = value;
+      currentPage.value = 1;
+      loadData();
+    };
+
+    const handleStatusChange = (value: any) => {
+      syncStatus.value = value === undefined ? undefined : Number(value);
       currentPage.value = 1;
       loadData();
     };
@@ -316,6 +325,20 @@ export default defineComponent({
                 v-slots={{
                   enterButton: () => <SearchOutlined />,
                 }}
+              />
+              <Select
+                placeholder="同步状态"
+                allowClear
+                value={syncStatus.value}
+                onChange={handleStatusChange}
+                style={{ width: 150 }}
+                options={[
+                  { label: "全部", value: undefined },
+                  { label: "未同步", value: 0 },
+                  { label: "同步中", value: 1 },
+                  { label: "已同步", value: 2 },
+                  { label: "失败", value: 3 },
+                ]}
               />
               <Button onClick={loadData} loading={textureStore.loading}>
                 {{

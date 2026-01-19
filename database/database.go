@@ -111,6 +111,11 @@ func RunMigrations() error {
 		logger.Log.Warnf("创建默认系统配置失败: %v", err)
 	}
 
+	// 运行一次性升级任务
+	if err := RunOnceUpgrade(db); err != nil {
+		logger.Log.Warnf("运行升级任务失败: %v", err)
+	}
+
 	logger.Log.Info("数据库迁移完成")
 	return nil
 }

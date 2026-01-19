@@ -36,6 +36,7 @@ func NewTextureController() *TextureController {
 // @Param pageSize query int false "每页数量" default(20)
 // @Param keyword query string false "搜索关键词"
 // @Param sortBy query string false "排序方式: use_count|date_published"
+// @Param syncStatus query int false "同步状态: 0=未同步 1=同步中 2=已同步 3=失败"
 // @Success 200 {object} response.Response
 // @Router /api/textures [get]
 func (c *TextureController) List(ctx *gin.Context) {
@@ -43,6 +44,7 @@ func (c *TextureController) List(ctx *gin.Context) {
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
 	keyword := ctx.Query("keyword")
 	sortBy := ctx.Query("sortBy")
+	syncStatusStr := ctx.Query("syncStatus")
 
 	filters := map[string]interface{}{}
 	if keyword != "" {
@@ -50,6 +52,11 @@ func (c *TextureController) List(ctx *gin.Context) {
 	}
 	if sortBy != "" {
 		filters["sort_by"] = sortBy
+	}
+	if syncStatusStr != "" {
+		if syncStatus, err := strconv.Atoi(syncStatusStr); err == nil {
+			filters["sync_status"] = syncStatus
+		}
 	}
 
 	textures, total, err := c.queryService.List(page, pageSize, filters)

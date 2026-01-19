@@ -72,6 +72,7 @@ export interface TextureListParams {
   tag_id?: number;
   sortBy?: "use_count" | "date_published" | "created_at"; // 改为 sortBy
   order?: "asc" | "desc";
+  syncStatus?: number; // 同步状态: 0=未同步 1=同步中 2=已同步 3=失败
 }
 
 export interface TextureListResponse {

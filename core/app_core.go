@@ -126,12 +126,12 @@ func (a *AppCore) InitTextureService() error {
 
 	// 启动后自动执行一次增量同步
 	go func() {
-		// a.Log.Info("启动后自动执行增量同步...")
-		// if err := a.TextureSyncService.IncrementalSync(); err != nil {
-		// 	a.Log.Errorf("自动同步失败: %v", err)
-		// } else {
-		// 	a.Log.Info("自动同步完成")
-		// }
+		a.Log.Info("启动后自动执行增量同步...")
+		if err := a.TextureSyncService.IncrementalSync(); err != nil {
+			a.Log.Errorf("自动同步失败: %v", err)
+		} else {
+			a.Log.Info("自动同步完成")
+		}
 	}()
 
 	a.Log.Info("贴图服务初始化成功")

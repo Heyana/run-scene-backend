@@ -4,22 +4,23 @@ import "time"
 
 // Texture 材质表
 type Texture struct {
-	ID            uint       `gorm:"primaryKey" json:"id"`
-	AssetID       string     `gorm:"uniqueIndex;size:100" json:"asset_id"`
-	Name          string     `gorm:"size:200;index" json:"name"`
-	Description   string     `gorm:"type:text" json:"description"`
-	Type          int        `json:"type"`
-	Authors       string     `gorm:"type:text" json:"authors"`
-	MaxResolution string     `gorm:"size:50" json:"max_resolution"`
-	FilesHash     string     `gorm:"size:100;index" json:"files_hash"`
-	DatePublished int64      `gorm:"index" json:"date_published"`
-	DownloadCount int        `json:"download_count"`
-	UseCount      int        `gorm:"default:0;index" json:"use_count"`
-	LastUsedAt    *time.Time `json:"last_used_at"`
-	Priority      int        `gorm:"default:0;index" json:"priority"`
-	SyncStatus    int        `gorm:"default:0;index" json:"sync_status"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID                uint       `gorm:"primaryKey" json:"id"`
+	AssetID           string     `gorm:"uniqueIndex;size:100" json:"asset_id"`
+	Name              string     `gorm:"size:200;index" json:"name"`
+	Description       string     `gorm:"type:text" json:"description"`
+	Type              int        `json:"type"`
+	Authors           string     `gorm:"type:text" json:"authors"`
+	MaxResolution     string     `gorm:"size:50" json:"max_resolution"`
+	FilesHash         string     `gorm:"size:100;index" json:"files_hash"`
+	DatePublished     int64      `gorm:"index" json:"date_published"`
+	DownloadCount     int        `json:"download_count"`
+	UseCount          int        `gorm:"default:0;index" json:"use_count"`
+	LastUsedAt        *time.Time `json:"last_used_at"`
+	Priority          int        `gorm:"default:0;index" json:"priority"`
+	SyncStatus        int        `gorm:"default:0;index" json:"sync_status"`
+	DownloadCompleted bool       `gorm:"default:false;index" json:"download_completed"` // 是否已完成下载
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // TextureFile 材质文件关联表
