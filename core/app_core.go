@@ -8,6 +8,8 @@ import (
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/server"
 	"go_wails_project_manager/services"
+	textureServices "go_wails_project_manager/services/texture"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -18,6 +20,7 @@ type AppCore struct {
 	Server          *server.Server
 	Log             *logrus.Logger
 	BackupScheduler *services.BackupScheduler
+	TextureSyncService *textureServices.SyncService
 	IsRunning       bool
 }
 
@@ -56,6 +59,12 @@ func (a *AppCore) InitDatabases() error {
 		return err
 	}
 
+	// 初始化贴图服务
+	if err := a.InitTextureService(); err != nil {
+		a.Log.Errorf("贴图服务初始化失败: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -84,6 +93,48 @@ func (a *AppCore) InitBackupService() error {
 	}
 
 	a.Log.Info("备份服务初始化成功")
+	return nil
+}
+
+// InitTextureService 初始化贴图服务
+func (a *AppCore) InitTextureService() error {
+	a.Log.Info("正在初始化贴图服务...")
+
+	// 获取数据库连接
+	db, err := database.GetDB()
+	if err != nil {
+		return err
+	}
+
+	// 创建存储目录
+	storageDir := config.AppConfig.Texture.StorageDir
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		a.Log.Errorf("创建贴图存储目录失败: %v", err)
+		return err
+	}
+	a.Log.Infof("贴图存储目录: %s", storageDir)
+
+	// 初始化同步服务
+	a.TextureSyncService = textureServices.NewSyncService(db, a.Log)
+
+	// 设置全局同步服务
+	textureServices.SetGlobalSyncService(a.TextureSyncService)
+
+	// 启动定时同步任务
+	a.TextureSyncService.StartScheduler()
+	a.Log.Info("贴图同步调度器已启动")
+
+	// 启动后自动执行一次增量同步
+	go func() {
+		// a.Log.Info("启动后自动执行增量同步...")
+		// if err := a.TextureSyncService.IncrementalSync(); err != nil {
+		// 	a.Log.Errorf("自动同步失败: %v", err)
+		// } else {
+		// 	a.Log.Info("自动同步完成")
+		// }
+	}()
+
+	a.Log.Info("贴图服务初始化成功")
 	return nil
 }
 
@@ -138,21 +189,28 @@ func (a *AppCore) GetServerStatus() map[string]interface{} {
 func (a *AppCore) Shutdown() {
 	a.Log.Info("🔄 开始优雅停机...")
 
-	// 1. 停止备份调度器
+	// 1. 停止贴图同步调度器
+	if a.TextureSyncService != nil {
+		a.Log.Info("⏳ 正在停止贴图同步调度器...")
+		a.TextureSyncService.StopScheduler()
+		a.Log.Info("✅ 贴图同步调度器已停止")
+	}
+
+	// 2. 停止备份调度器
 	if a.BackupScheduler != nil {
 		a.Log.Info("⏳ 正在停止备份调度器...")
 		a.BackupScheduler.Stop()
 		a.Log.Info("✅ 备份调度器已停止")
 	}
 
-	// 2. 停止 HTTP 服务器
+	// 3. 停止 HTTP 服务器
 	if err := a.StopServer(); err != nil {
 		a.Log.Errorf("❌ 停止服务器失败: %v", err)
 	} else {
 		a.Log.Info("✅ HTTP服务器已停止")
 	}
 
-	// 3. 关闭数据库连接
+	// 4. 关闭数据库连接
 	a.Log.Info("⏳ 正在关闭数据库连接...")
 	if err := database.Close(); err != nil {
 		a.Log.Errorf("❌ 关闭数据库失败: %v", err)

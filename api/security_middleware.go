@@ -620,7 +620,8 @@ func ProtectSensitivePathsMiddleware() gin.HandlerFunc {
 		"/.git",        // Git目录
 		"/data/",       // 数据库文件
 		"/config/",     // 配置文件
-		"/static/",     // 静态资源目录（应通过 /website 访问）
+		// 注意：不再保护 /static/，因为 /textures/ 需要公开访问
+		// "/static/",     // 静态资源目录（应通过 /website 访问）
 		"/bootstrap/",  // 启动代码
 		"/build/",      // 构建文件
 		"/core/",       // 核心代码
@@ -641,10 +642,24 @@ func ProtectSensitivePathsMiddleware() gin.HandlerFunc {
 		"/@fs",         // 文件系统访问路径（无斜杠）
 		"/fs/",         // 文件系统访问路径（简化版）
 	}
+	
+	// 允许访问的路径（白名单）
+	allowedPaths := []string{
+		"/textures/",   // 材质文件公开访问
+	}
 
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
+		
+		// 检查是否在白名单中
+		for _, allowedPath := range allowedPaths {
+			if strings.HasPrefix(path, allowedPath) {
+				c.Next()
+				return
+			}
+		}
 
+		// 检查是否访问敏感路径
 		for _, protectedPath := range protectedPaths {
 			if strings.HasPrefix(path, protectedPath) {
 				ip := getClientIP(c)

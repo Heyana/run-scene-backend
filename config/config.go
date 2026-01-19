@@ -125,6 +125,40 @@ type YAMLConfig struct {
 		MaxUploadSize  int64 `yaml:"max_upload_size"`
 		SessionTimeout int64 `yaml:"session_timeout"`
 	} `yaml:"misc"`
+
+	Texture struct {
+		LocalStorageEnabled bool   `yaml:"local_storage_enabled"`
+		StorageDir          string `yaml:"storage_dir"`
+		BaseURL             string `yaml:"base_url"`
+		NASEnabled          bool   `yaml:"nas_enabled"`
+		NASPath             string `yaml:"nas_path"`
+		WebDAVEnabled       bool   `yaml:"webdav_enabled"`
+		WebDAVURL           string `yaml:"webdav_url"`
+		WebDAVUsername      string `yaml:"webdav_username"`
+		WebDAVPassword      string `yaml:"webdav_password"`
+		FTPEnabled          bool   `yaml:"ftp_enabled"`
+		FTPHost             string `yaml:"ftp_host"`
+		FTPPort             int    `yaml:"ftp_port"`
+		FTPUsername         string `yaml:"ftp_username"`
+		FTPPassword         string `yaml:"ftp_password"`
+		FTPBasePath         string `yaml:"ftp_base_path"`
+		SyncInterval        string `yaml:"sync_interval"`
+		DownloadConcurrency int    `yaml:"download_concurrency"`
+		RetryTimes          int    `yaml:"retry_times"`
+		ThumbnailSize       int    `yaml:"thumbnail_size"`
+		TextureResolution   int    `yaml:"texture_resolution"`
+		WebPQuality         int    `yaml:"webp_quality"`
+		DownloadThumbnail   bool   `yaml:"download_thumbnail"`
+		DownloadTextures    bool   `yaml:"download_textures"`
+		APIBaseURL          string `yaml:"api_base_url"`
+		APITimeout          int    `yaml:"api_timeout"`
+		ProxyEnabled        bool   `yaml:"proxy_enabled"`
+		ProxyURL            string `yaml:"proxy_url"`
+		LogEnabled          bool   `yaml:"log_enabled"`
+		LogLevel            string `yaml:"log_level"`
+		LogToFile           bool   `yaml:"log_to_file"`
+		LogFilePath         string `yaml:"log_file_path"`
+	} `yaml:"texture"`
 }
 
 // Config 应用程序配置结构
@@ -142,6 +176,42 @@ type Config struct {
 	PublicIP      string         // 公网IP
 	PublicCDNPort int            // 公网CDN端口
 	Security      SecurityConfig // 安全配置
+	Texture       TextureConfig  // 贴图库配置
+}
+
+// TextureConfig 贴图库配置
+type TextureConfig struct {
+	LocalStorageEnabled bool
+	StorageDir          string
+	BaseURL             string
+	NASEnabled          bool
+	NASPath             string
+	WebDAVEnabled       bool
+	WebDAVURL           string
+	WebDAVUsername      string
+	WebDAVPassword      string
+	FTPEnabled          bool
+	FTPHost             string
+	FTPPort             int
+	FTPUsername         string
+	FTPPassword         string
+	FTPBasePath         string
+	SyncInterval        string
+	DownloadConcurrency int
+	RetryTimes          int
+	ThumbnailSize       int
+	TextureResolution   int
+	WebPQuality         int
+	DownloadThumbnail   bool
+	DownloadTextures    bool
+	APIBaseURL          string
+	APITimeout          int
+	ProxyEnabled        bool
+	ProxyURL            string
+	LogEnabled          bool
+	LogLevel            string
+	LogToFile           bool
+	LogFilePath         string
 }
 
 // AppConfig 全局配置实例
@@ -167,6 +237,39 @@ func LoadConfig() error {
 		PublicIP:      getEnvOrDefault("PUBLIC_IP", yamlConfig.Network.Public.IP),
 		PublicCDNPort: getEnvAsIntOrDefault("PUBLIC_CDN_PORT", yamlConfig.Network.Public.CDNPort),
 		Security:      DefaultSecurityConfig, // 使用默认安全配置
+		Texture: TextureConfig{
+			LocalStorageEnabled: getEnvAsBoolOrDefault("TEXTURE_LOCAL_STORAGE_ENABLED", yamlConfig.Texture.LocalStorageEnabled),
+			StorageDir:          getEnvOrDefault("TEXTURE_STORAGE_DIR", yamlConfig.Texture.StorageDir),
+			BaseURL:             getEnvOrDefault("TEXTURE_BASE_URL", yamlConfig.Texture.BaseURL),
+			NASEnabled:          getEnvAsBoolOrDefault("TEXTURE_NAS_ENABLED", yamlConfig.Texture.NASEnabled),
+			NASPath:             getEnvOrDefault("TEXTURE_NAS_PATH", yamlConfig.Texture.NASPath),
+			WebDAVEnabled:       getEnvAsBoolOrDefault("TEXTURE_WEBDAV_ENABLED", yamlConfig.Texture.WebDAVEnabled),
+			WebDAVURL:           getEnvOrDefault("TEXTURE_WEBDAV_URL", yamlConfig.Texture.WebDAVURL),
+			WebDAVUsername:      getEnvOrDefault("TEXTURE_WEBDAV_USERNAME", yamlConfig.Texture.WebDAVUsername),
+			WebDAVPassword:      getEnvOrDefault("TEXTURE_WEBDAV_PASSWORD", yamlConfig.Texture.WebDAVPassword),
+			FTPEnabled:          getEnvAsBoolOrDefault("TEXTURE_FTP_ENABLED", yamlConfig.Texture.FTPEnabled),
+			FTPHost:             getEnvOrDefault("TEXTURE_FTP_HOST", yamlConfig.Texture.FTPHost),
+			FTPPort:             getEnvAsIntOrDefault("TEXTURE_FTP_PORT", yamlConfig.Texture.FTPPort),
+			FTPUsername:         getEnvOrDefault("TEXTURE_FTP_USERNAME", yamlConfig.Texture.FTPUsername),
+			FTPPassword:         getEnvOrDefault("TEXTURE_FTP_PASSWORD", yamlConfig.Texture.FTPPassword),
+			FTPBasePath:         getEnvOrDefault("TEXTURE_FTP_BASE_PATH", yamlConfig.Texture.FTPBasePath),
+			SyncInterval:        getEnvOrDefault("TEXTURE_SYNC_INTERVAL", yamlConfig.Texture.SyncInterval),
+			DownloadConcurrency: getEnvAsIntOrDefault("TEXTURE_DOWNLOAD_CONCURRENCY", yamlConfig.Texture.DownloadConcurrency),
+			RetryTimes:          getEnvAsIntOrDefault("TEXTURE_RETRY_TIMES", yamlConfig.Texture.RetryTimes),
+			ThumbnailSize:       getEnvAsIntOrDefault("TEXTURE_THUMBNAIL_SIZE", yamlConfig.Texture.ThumbnailSize),
+			TextureResolution:   getEnvAsIntOrDefault("TEXTURE_RESOLUTION", yamlConfig.Texture.TextureResolution),
+			WebPQuality:         getEnvAsIntOrDefault("TEXTURE_WEBP_QUALITY", yamlConfig.Texture.WebPQuality),
+			DownloadThumbnail:   getEnvAsBoolOrDefault("TEXTURE_DOWNLOAD_THUMBNAIL", yamlConfig.Texture.DownloadThumbnail),
+			DownloadTextures:    getEnvAsBoolOrDefault("TEXTURE_DOWNLOAD_TEXTURES", yamlConfig.Texture.DownloadTextures),
+			APIBaseURL:          getEnvOrDefault("TEXTURE_API_BASE_URL", yamlConfig.Texture.APIBaseURL),
+			APITimeout:          getEnvAsIntOrDefault("TEXTURE_API_TIMEOUT", yamlConfig.Texture.APITimeout),
+			ProxyEnabled:        getEnvAsBoolOrDefault("TEXTURE_PROXY_ENABLED", yamlConfig.Texture.ProxyEnabled),
+			ProxyURL:            getEnvOrDefault("TEXTURE_PROXY_URL", yamlConfig.Texture.ProxyURL),
+			LogEnabled:          getEnvAsBoolOrDefault("TEXTURE_LOG_ENABLED", yamlConfig.Texture.LogEnabled),
+			LogLevel:            getEnvOrDefault("TEXTURE_LOG_LEVEL", yamlConfig.Texture.LogLevel),
+			LogToFile:           getEnvAsBoolOrDefault("TEXTURE_LOG_TO_FILE", yamlConfig.Texture.LogToFile),
+			LogFilePath:         getEnvOrDefault("TEXTURE_LOG_FILE_PATH", yamlConfig.Texture.LogFilePath),
+		},
 	}
 
 	// 3. 设置CDN基础路径（支持YAML和环境变量覆盖）
@@ -236,6 +339,22 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.COS.Region = "ap-shanghai"
 	defaultConfig.Misc.MaxUploadSize = 104857600 // 100MB
 	defaultConfig.Misc.SessionTimeout = 86400    // 24小时
+	// 贴图库默认配置
+	defaultConfig.Texture.StorageDir = "static/textures"
+	defaultConfig.Texture.SyncInterval = "6h"
+	defaultConfig.Texture.DownloadConcurrency = 10
+	defaultConfig.Texture.RetryTimes = 3
+	defaultConfig.Texture.ThumbnailSize = 256
+	defaultConfig.Texture.TextureResolution = 1024
+	defaultConfig.Texture.WebPQuality = 80
+	defaultConfig.Texture.DownloadThumbnail = true
+	defaultConfig.Texture.DownloadTextures = true
+	defaultConfig.Texture.APIBaseURL = "https://api.polyhaven.com"
+	defaultConfig.Texture.APITimeout = 30
+	defaultConfig.Texture.LogEnabled = true
+	defaultConfig.Texture.LogLevel = "info"
+	defaultConfig.Texture.LogToFile = true
+	defaultConfig.Texture.LogFilePath = "./logs/texture_sync.log"
 
 	// 尝试读取YAML配置文件
 	configFile := "config.yaml"
@@ -295,6 +414,10 @@ func loadYAMLConfig() *YAMLConfig {
 				if yamlConfig.Misc.SessionTimeout != 0 {
 					defaultConfig.Misc.SessionTimeout = yamlConfig.Misc.SessionTimeout
 				}
+				// 贴图库配置
+				if yamlConfig.Texture.StorageDir != "" {
+					defaultConfig.Texture = yamlConfig.Texture
+				}
 			}
 		}
 	}
@@ -325,6 +448,16 @@ func getEnvAsIntOrDefault(key string, defaultValue int) int {
 	if value, exists := os.LookupEnv(key); exists {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// getEnvAsBoolOrDefault 获取环境变量并转换为bool，如果不存在或转换失败则返回默认值
+func getEnvAsBoolOrDefault(key string, defaultValue bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return defaultValue

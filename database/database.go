@@ -87,9 +87,23 @@ func RunMigrations() error {
 		&models.SystemConfig{},
 		&models.ResourceFile{}, // 通用资源文件表
 		&models.BackupRecord{}, // 备份记录表
+		// 贴图库相关表
+		&models.File{},
+		&models.Texture{},
+		&models.TextureFile{},
+		&models.Tag{},
+		&models.TextureTag{},
+		&models.TextureSyncLog{},
+		&models.DownloadQueue{},
+		&models.TextureMetrics{},
 	)
 	if err != nil {
 		return err
+	}
+
+	// 创建贴图库索引
+	if err := createTextureIndexes(); err != nil {
+		logger.Log.Warnf("创建贴图库索引失败: %v", err)
 	}
 
 	// 创建默认系统配置
@@ -98,6 +112,15 @@ func RunMigrations() error {
 	}
 
 	logger.Log.Info("数据库迁移完成")
+	return nil
+}
+
+// createTextureIndexes 创建贴图库相关索引
+func createTextureIndexes() error {
+	// 创建 texture_tag 联合唯一索引
+	if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_texture_tag_unique ON texture_tag(texture_id, tag_id)").Error; err != nil {
+		return err
+	}
 	return nil
 }
 

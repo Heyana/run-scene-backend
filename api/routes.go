@@ -2,10 +2,13 @@
 package api
 
 import (
+	"os"
+	"strings"
 	"time"
 
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/controllers"
+	"go_wails_project_manager/logger"
 	"go_wails_project_manager/middleware"
 	"go_wails_project_manager/response"
 
@@ -34,6 +37,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	// 初始化有用的控制器
 	backupController := controllers.NewBackupController()
 	securityController := controllers.NewSecurityController()
+	textureController := controllers.NewTextureController()
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -83,6 +87,63 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		})
 	})
 
+	// 贴图文件静态服务
+	// 如果启用了 NAS，使用 NAS 路径；否则使用本地路径
+	textureDir := "./static/textures"
+	if config.AppConfig.Texture.NASEnabled && config.AppConfig.Texture.NASPath != "" {
+		// 使用 NAS 路径
+		textureDir = config.AppConfig.Texture.NASPath
+		logger.Log.Infof("使用 NAS 路径提供静态文件服务: %s", textureDir)
+	} else {
+		logger.Log.Infof("使用本地路径提供静态文件服务: %s", textureDir)
+	}
+	
+	// 使用自定义处理器来支持 UNC 路径
+	router.GET("/textures/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		// 移除开头的斜杠
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		// 拼接完整路径
+		fullPath := textureDir
+		if !strings.HasSuffix(fullPath, "\\") && !strings.HasSuffix(fullPath, "/") {
+			fullPath += "\\"
+		}
+		fullPath += filepath
+		
+		// 将正斜杠转换为反斜杠（Windows 路径）
+		fullPath = strings.ReplaceAll(fullPath, "/", "\\")
+		
+		logger.Log.Infof("请求文件: %s -> %s", filepath, fullPath)
+		
+		// 检查文件是否存在
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("文件存在，大小: %d bytes", fileInfo.Size())
+		
+		// 返回文件
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -110,6 +171,25 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			security.POST("/whitelist/:ip", securityController.AddToWhitelist)        // 添加IP到白名单
 			security.DELETE("/whitelist/:ip", securityController.RemoveFromWhitelist) // 从白名单移除IP
 			security.GET("/connections", securityController.GetConnections)           // 获取连接统计
+		}
+
+		// 贴图库管理API
+		textures := api.Group("/textures")
+		{
+			textures.GET("", textureController.List)                      // 获取贴图列表
+			textures.GET("/:assetId", textureController.GetDetail)        // 获取贴图详情
+			textures.POST("/:assetId/use", textureController.RecordUse)   // 记录使用次数
+			textures.POST("/sync", textureController.TriggerSync)         // 触发同步
+			textures.GET("/sync/progress", textureController.GetSyncProgress)     // 获取同步进度
+			textures.GET("/sync/status/:logId", textureController.GetSyncStatus)  // 获取同步状态
+			textures.GET("/sync/logs", textureController.GetSyncLogs)             // 获取同步日志
+		}
+
+		// 标签管理API
+		tags := api.Group("/tags")
+		{
+			tags.GET("", textureController.GetTags)                          // 获取标签列表
+			tags.GET("/:tagId/textures", textureController.GetTexturesByTag) // 根据标签获取贴图
 		}
 
 		// TODO: 添加其他业务控制器和路由
