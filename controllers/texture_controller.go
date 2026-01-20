@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"go_wails_project_manager/config"
 	"go_wails_project_manager/database"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/models"
@@ -34,9 +35,11 @@ func NewTextureController() *TextureController {
 // @Tags Texture
 // @Param page query int false "页码" default(1)
 // @Param pageSize query int false "每页数量" default(20)
-// @Param keyword query string false "搜索关键词"
+// @Param keyword query string false "搜索关键词（支持名称、描述、Asset ID）"
 // @Param sortBy query string false "排序方式: use_count|date_published"
 // @Param syncStatus query int false "同步状态: 0=未同步 1=同步中 2=已同步 3=失败"
+// @Param textureType query string false "原始贴图类型: Diffuse|Rough|Normal 等"
+// @Param threeJSType query string false "Three.js 贴图类型: map|normalMap|roughnessMap 等"
 // @Success 200 {object} response.Response
 // @Router /api/textures [get]
 func (c *TextureController) List(ctx *gin.Context) {
@@ -45,6 +48,8 @@ func (c *TextureController) List(ctx *gin.Context) {
 	keyword := ctx.Query("keyword")
 	sortBy := ctx.Query("sortBy")
 	syncStatusStr := ctx.Query("syncStatus")
+	textureType := ctx.Query("textureType")
+	threeJSType := ctx.Query("threeJSType")
 
 	filters := map[string]interface{}{}
 	if keyword != "" {
@@ -57,6 +62,12 @@ func (c *TextureController) List(ctx *gin.Context) {
 		if syncStatus, err := strconv.Atoi(syncStatusStr); err == nil {
 			filters["sync_status"] = syncStatus
 		}
+	}
+	if textureType != "" {
+		filters["texture_type"] = textureType
+	}
+	if threeJSType != "" {
+		filters["threejs_type"] = threeJSType
 	}
 
 	textures, total, err := c.queryService.List(page, pageSize, filters)
@@ -329,5 +340,42 @@ func (c *TextureController) GetSyncLogs(ctx *gin.Context) {
 		"total":    total,
 		"page":     page,
 		"pageSize": pageSize,
+	})
+}
+
+// GetTextureTypes 获取所有贴图类型
+// @Summary 获取所有贴图类型
+// @Tags Texture
+// @Success 200 {object} response.Response
+// @Router /api/textures/types [get]
+func (c *TextureController) GetTextureTypes(ctx *gin.Context) {
+	types, err := c.queryService.GetAllTextureTypes()
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败")
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"types": types,
+		"count": len(types),
+	})
+}
+
+// GetThreeJSTypes 获取 Three.js 贴图类型
+// @Summary 获取 Three.js 贴图类型
+// @Tags Texture
+// @Success 200 {object} response.Response
+// @Router /api/textures/types/threejs [get]
+func (c *TextureController) GetThreeJSTypes(ctx *gin.Context) {
+	if config.TextureMapping == nil {
+		response.Error(ctx, http.StatusServiceUnavailable, "贴图映射配置未加载")
+		return
+	}
+
+	typeInfo := config.TextureMapping.GetThreeJSTypeInfo()
+
+	response.Success(ctx, gin.H{
+		"types": typeInfo,
+		"count": len(typeInfo),
 	})
 }

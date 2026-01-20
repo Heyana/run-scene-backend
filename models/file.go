@@ -70,3 +70,42 @@ func (f *File) AfterFind(tx *gorm.DB) error {
 	f.FullURL = ""
 	return nil
 }
+
+// ExtractTextureType 从文件名提取贴图类型
+// 例如: "nor_dx_2k.jpg" -> "nor_dx"
+//      "Diffuse_2k.jpg" -> "Diffuse"
+//      "Rough_4k.jpg" -> "Rough"
+func ExtractTextureType(fileName string) string {
+	// 移除扩展名
+	name := fileName
+	if idx := strings.LastIndex(name, "."); idx != -1 {
+		name = name[:idx]
+	}
+	
+	// 移除常见的分辨率后缀
+	resolutionSuffixes := []string{"_1k", "_2k", "_4k", "_8k", "_16k", "_1K", "_2K", "_4K", "_8K", "_16K"}
+	for _, suffix := range resolutionSuffixes {
+		if strings.HasSuffix(name, suffix) {
+			name = strings.TrimSuffix(name, suffix)
+			break
+		}
+	}
+	
+	// 移除最后一个下划线（如果存在）
+	if idx := strings.LastIndex(name, "_"); idx != -1 {
+		// 检查下划线后面是否是数字（可能是其他格式的分辨率）
+		afterUnderscore := name[idx+1:]
+		isNumber := true
+		for _, c := range afterUnderscore {
+			if c < '0' || c > '9' {
+				isNumber = false
+				break
+			}
+		}
+		if isNumber {
+			name = name[:idx]
+		}
+	}
+	
+	return name
+}

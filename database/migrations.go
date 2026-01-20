@@ -32,6 +32,16 @@ func RunOnceUpgrade(db *gorm.DB) error {
 		logger.Log.Errorf("更新材质同步状态失败: %v", err)
 	}
 
+	// 5. 分析并更新文件的贴图类型
+	if err := analyzeTextureTypes(db); err != nil {
+		logger.Log.Errorf("分析贴图类型失败: %v", err)
+	}
+
+	// 6. 更新材质的贴图类型列表
+	if err := updateTextureTypesList(db); err != nil {
+		logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
+	}
+
 	logger.Log.Info("所有升级任务执行完成")
 	return nil
 }
@@ -293,4 +303,126 @@ func updateTextureSyncStatus(db *gorm.DB) error {
 
 	logger.Log.Infof("成功更新 %d 个材质的同步状态", updatedCount)
 	return nil
+}
+
+// analyzeTextureTypes 分析并更新文件的贴图类型
+func analyzeTextureTypes(db *gorm.DB) error {
+	logger.Log.Info("开始分析文件贴图类型...")
+
+	// 查询所有贴图文件（texture 类型）
+	var files []models.File
+	if err := db.Where("file_type = ? AND related_type = ?", "texture", "Texture").Find(&files).Error; err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		logger.Log.Info("没有找到贴图文件")
+		return nil
+	}
+
+	logger.Log.Infof("找到 %d 个贴图文件，开始分析类型...", len(files))
+
+	// 统计所有发现的类型
+	typeStats := make(map[string]int)
+	updatedCount := 0
+
+	for _, file := range files {
+		// 提取贴图类型
+		textureType := models.ExtractTextureType(file.FileName)
+		
+		// 如果提取到了类型且与当前不同，则更新
+		if textureType != "" && textureType != file.TextureType {
+			if err := db.Model(&file).Update("texture_type", textureType).Error; err != nil {
+				logger.Log.Warnf("更新文件贴图类型失败 (id=%d): %v", file.ID, err)
+				continue
+			}
+			updatedCount++
+			typeStats[textureType]++
+			
+			if updatedCount%100 == 0 {
+				logger.Log.Infof("已处理 %d/%d 个文件...", updatedCount, len(files))
+			}
+		}
+	}
+
+	logger.Log.Infof("成功更新 %d 个文件的贴图类型", updatedCount)
+	logger.Log.Info("发现的贴图类型统计:")
+	for textureType, count := range typeStats {
+		logger.Log.Infof("  - %s: %d 个", textureType, count)
+	}
+
+	return nil
+}
+
+// updateTextureTypesList 更新材质的贴图类型列表
+func updateTextureTypesList(db *gorm.DB) error {
+	logger.Log.Info("开始更新材质的贴图类型列表...")
+
+	// 查询所有材质
+	var textures []models.Texture
+	if err := db.Find(&textures).Error; err != nil {
+		return err
+	}
+
+	if len(textures) == 0 {
+		logger.Log.Info("没有找到材质记录")
+		return nil
+	}
+
+	logger.Log.Infof("找到 %d 个材质，开始更新贴图类型列表...", len(textures))
+
+	updatedCount := 0
+	for _, texture := range textures {
+		// 查询该材质的所有文件
+		var files []models.File
+		if err := db.Where("related_id = ? AND related_type = ? AND file_type = ?", 
+			texture.ID, "Texture", "texture").Find(&files).Error; err != nil {
+			logger.Log.Warnf("查询材质文件失败 (texture_id=%d): %v", texture.ID, err)
+			continue
+		}
+
+		// 收集所有唯一的贴图类型
+		typeSet := make(map[string]bool)
+		for _, file := range files {
+			if file.TextureType != "" {
+				typeSet[file.TextureType] = true
+			}
+		}
+
+		// 转换为逗号分隔的字符串
+		var types []string
+		for textureType := range typeSet {
+			types = append(types, textureType)
+		}
+
+		if len(types) > 0 {
+			textureTypes := joinStrings(types, ",")
+			
+			// 更新材质的 texture_types 字段
+			if err := db.Model(&texture).Update("texture_types", textureTypes).Error; err != nil {
+				logger.Log.Warnf("更新材质贴图类型列表失败 (id=%d): %v", texture.ID, err)
+				continue
+			}
+			
+			updatedCount++
+			if updatedCount%50 == 0 {
+				logger.Log.Infof("已处理 %d/%d 个材质...", updatedCount, len(textures))
+			}
+		}
+	}
+
+	logger.Log.Infof("成功更新 %d 个材质的贴图类型列表", updatedCount)
+	return nil
+}
+
+// joinStrings 连接字符串数组
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
 }

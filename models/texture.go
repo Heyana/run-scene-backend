@@ -19,6 +19,7 @@ type Texture struct {
 	Priority          int        `gorm:"default:0;index" json:"priority"`
 	SyncStatus        int        `gorm:"default:0;index" json:"sync_status"`
 	DownloadCompleted bool       `gorm:"default:false;index" json:"download_completed"` // 是否已完成下载
+	TextureTypes      string     `gorm:"type:text" json:"texture_types"`                // 包含的贴图类型，逗号分隔，如: "Diffuse,Rough,Normal"
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }

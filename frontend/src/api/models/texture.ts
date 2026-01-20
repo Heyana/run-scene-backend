@@ -20,6 +20,7 @@ export interface TextureFile {
   status: number;
   download_retry: number;
   last_error: string;
+  texture_type: string; // 贴图类型
   created_at: string;
   updated_at: string;
   deleted_at?: string;
@@ -41,6 +42,7 @@ export interface Texture {
   last_used_at?: string;
   priority: number;
   sync_status: number;
+  texture_types: string; // 包含的贴图类型，逗号分隔
   created_at: string;
   updated_at: string;
   files?: TextureFile[]; // 添加文件列表
@@ -73,6 +75,7 @@ export interface TextureListParams {
   sortBy?: "use_count" | "date_published" | "created_at"; // 改为 sortBy
   order?: "asc" | "desc";
   syncStatus?: number; // 同步状态: 0=未同步 1=同步中 2=已同步 3=失败
+  textureType?: string; // 贴图类型筛选
 }
 
 export interface TextureListResponse {
@@ -144,4 +147,11 @@ export const getSyncLogs = (params?: { page?: number; pageSize?: number }) => {
     "textures/sync/logs",
     { params },
   );
+};
+
+/**
+ * 获取所有贴图类型
+ */
+export const getTextureTypes = () => {
+  return http.get<{ types: string[]; count: number }>("textures/types");
 };

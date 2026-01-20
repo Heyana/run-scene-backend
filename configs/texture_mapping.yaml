@@ -1,0 +1,78 @@
+# Three.js 贴图类型映射配置
+# 将原始贴图类型映射到 Three.js 标准材质属性
+
+threejs:
+  # 基础颜色贴图 (map)
+  map:
+    - Diffuse
+    - diff_png
+    - col
+    - col1
+    - col2
+    - coll1
+    - coll2
+
+  # 法线贴图 (normalMap)
+  normalMap:
+    - nor_dx
+    - nor_gl
+    - normal_dx
+    - normal_gl
+
+  # 粗糙度贴图 (roughnessMap)
+  roughnessMap:
+    - Rough
+    - rough_ao
+    - rough_diff
+
+  # 金属度贴图 (metalnessMap)
+  metalnessMap:
+    - Metal
+    - me_arm
+
+  # 环境光遮蔽贴图 (aoMap)
+  aoMap:
+    - AO
+    - arm
+
+  # 位移贴图 (displacementMap)
+  displacementMap:
+    - Displacement
+    - Bump
+
+  # 高光贴图 (specularMap)
+  specularMap:
+    - spec
+    - spec_ior
+
+  # 透明度贴图 (alphaMap)
+  alphaMap:
+    - Mask
+    - translucent
+
+  # 各向异性贴图 (anisotropyMap)
+  anisotropyMap:
+    - anisotropy_rotation
+    - anisotropy_strength
+
+  # 反射贴图 (envMap / reflectionMap)
+  reflectionMap:
+    - ref
+
+  # 其他未分类
+  other:
+    - page
+
+# 显示名称映射（用于前端展示）
+display_names:
+  map: "基础颜色"
+  normalMap: "法线"
+  roughnessMap: "粗糙度"
+  metalnessMap: "金属度"
+  aoMap: "环境光遮蔽"
+  displacementMap: "位移"
+  specularMap: "高光"
+  alphaMap: "透明度"
+  anisotropyMap: "各向异性"
+  reflectionMap: "反射"
+  other: "其他"

@@ -31,6 +31,13 @@ func NewAppCore() (*AppCore, error) {
 		return nil, err
 	}
 
+	// 加载贴图映射配置
+	if err := config.LoadTextureMappingConfig("configs/texture_mapping.yaml"); err != nil {
+		logger.Log.Warnf("加载贴图映射配置失败: %v，将使用默认配置", err)
+	} else {
+		logger.Log.Info("贴图映射配置加载成功")
+	}
+
 	// 初始化日志
 	logger.Init()
 	log := logger.GetLogger()

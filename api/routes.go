@@ -176,10 +176,12 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		// 贴图库管理API
 		textures := api.Group("/textures")
 		{
-			textures.GET("", textureController.List)                      // 获取贴图列表
-			textures.GET("/:assetId", textureController.GetDetail)        // 获取贴图详情
-			textures.POST("/:assetId/use", textureController.RecordUse)   // 记录使用次数
-			textures.POST("/sync", textureController.TriggerSync)         // 触发同步
+			textures.GET("", textureController.List)                              // 获取贴图列表
+			textures.GET("/types", textureController.GetTextureTypes)             // 获取所有贴图类型
+			textures.GET("/types/threejs", textureController.GetThreeJSTypes)     // 获取 Three.js 贴图类型
+			textures.GET("/:assetId", textureController.GetDetail)                // 获取贴图详情
+			textures.POST("/:assetId/use", textureController.RecordUse)           // 记录使用次数
+			textures.POST("/sync", textureController.TriggerSync)                 // 触发同步
 			textures.GET("/sync/progress", textureController.GetSyncProgress)     // 获取同步进度
 			textures.GET("/sync/status/:logId", textureController.GetSyncStatus)  // 获取同步状态
 			textures.GET("/sync/logs", textureController.GetSyncLogs)             // 获取同步日志

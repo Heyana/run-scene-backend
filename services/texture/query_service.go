@@ -1,7 +1,9 @@
 package texture
 
 import (
+	"go_wails_project_manager/config"
 	"go_wails_project_manager/models"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -26,11 +28,36 @@ func (s *QueryService) List(page, pageSize int, filters map[string]interface{}) 
 
 	// 应用过滤条件
 	if keyword, ok := filters["keyword"].(string); ok && keyword != "" {
-		query = query.Where("name LIKE ? OR description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		// 支持按名称、描述或 asset_id 搜索
+		query = query.Where("name LIKE ? OR description LIKE ? OR asset_id LIKE ?", 
+			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
 
 	if syncStatus, ok := filters["sync_status"].(int); ok {
 		query = query.Where("sync_status = ?", syncStatus)
+	}
+
+	// 按贴图类型筛选
+	if textureType, ok := filters["texture_type"].(string); ok && textureType != "" {
+		// 使用 LIKE 查询，因为 texture_types 是逗号分隔的字符串
+		query = query.Where("texture_types LIKE ?", "%"+textureType+"%")
+	}
+
+	// 按 Three.js 类型筛选（需要映射到原始类型）
+	if threeJSType, ok := filters["threejs_type"].(string); ok && threeJSType != "" {
+		// 从配置中获取对应的原始类型列表
+		if config.TextureMapping != nil && config.TextureMapping.ThreeJS != nil {
+			if originalTypes, exists := config.TextureMapping.ThreeJS[threeJSType]; exists && len(originalTypes) > 0 {
+				// 构建 OR 查询：texture_types LIKE '%Diffuse%' OR texture_types LIKE '%col%' ...
+				orConditions := make([]string, len(originalTypes))
+				args := make([]interface{}, len(originalTypes))
+				for i, originalType := range originalTypes {
+					orConditions[i] = "texture_types LIKE ?"
+					args[i] = "%" + originalType + "%"
+				}
+				query = query.Where(strings.Join(orConditions, " OR "), args...)
+			}
+		}
 	}
 
 	// 排序
@@ -184,4 +211,27 @@ func (s *QueryService) ListSyncLogs(page, pageSize int, filters map[string]inter
 	}
 
 	return logs, total, nil
+}
+
+// GetAllTextureTypes 获取所有唯一的贴图类型
+func (s *QueryService) GetAllTextureTypes() ([]string, error) {
+	var files []models.File
+	
+	// 查询所有不同的 texture_type
+	if err := s.db.Model(&models.File{}).
+		Where("file_type = ? AND texture_type != ?", "texture", "").
+		Distinct("texture_type").
+		Find(&files).Error; err != nil {
+		return nil, err
+	}
+
+	// 提取类型列表
+	types := make([]string, 0, len(files))
+	for _, file := range files {
+		if file.TextureType != "" {
+			types = append(types, file.TextureType)
+		}
+	}
+
+	return types, nil
 }
