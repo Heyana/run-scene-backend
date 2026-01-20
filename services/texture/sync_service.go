@@ -707,9 +707,17 @@ func (s *SyncService) StartScheduler() {
 		for {
 			select {
 			case <-s.ticker.C:
-				s.logInfo("定时任务触发，开始增量同步")
+				// 1. PolyHaven 增量同步
+				s.logInfo("定时任务触发，开始 PolyHaven 增量同步")
 				if err := s.IncrementalSync(); err != nil {
-					s.logError("定时同步失败: %v", err)
+					s.logError("PolyHaven 定时同步失败: %v", err)
+				}
+
+				// 2. AmbientCG 增量同步
+				s.logInfo("定时任务触发，开始 AmbientCG 增量同步")
+				ambientcgService := NewAmbientCGSyncService(s.db, s.logger)
+				if err := ambientcgService.IncrementalSync(); err != nil {
+					s.logError("AmbientCG 定时同步失败: %v", err)
 				}
 			case <-s.stopChan:
 				s.logInfo("定时同步任务已停止")

@@ -3,9 +3,11 @@ package texture
 import (
 	"archive/zip"
 	"fmt"
+	"go_wails_project_manager/config"
 	"go_wails_project_manager/models"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,23 +19,56 @@ import (
 
 // AmbientCGDownloadService AmbientCG 按需下载服务
 type AmbientCGDownloadService struct {
-	db         *gorm.DB
-	logger     *logrus.Logger
-	adapter    *AmbientCGAdapter
-	httpClient *http.Client
+	db                  *gorm.DB
+	logger              *logrus.Logger
+	adapter             *AmbientCGAdapter
+	httpClient          *http.Client
+	downloadService     *DownloadService // 使用统一的下载服务
+	localStorageEnabled bool
+	storageDir          string
+	nasEnabled          bool
+	nasPath             string
 }
 
 // NewAmbientCGDownloadService 创建下载服务
 func NewAmbientCGDownloadService(db *gorm.DB, logger *logrus.Logger) *AmbientCGDownloadService {
 	adapter := NewAmbientCGAdapter("https://ambientcg.com", 120*time.Second) // 下载超时时间更长
+	downloadService := NewDownloadService(db, logger)                        // 创建统一下载服务
+
+	// 创建 HTTP 客户端
+	client := &http.Client{
+		Timeout: 120 * time.Second,
+	}
+
+	// 如果启用代理，配置代理
+	if config.AppConfig.Texture.ProxyEnabled && config.AppConfig.Texture.ProxyURL != "" {
+		proxyURL, err := url.Parse(config.AppConfig.Texture.ProxyURL)
+		if err == nil {
+			client.Transport = &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			logger.Infof("[AmbientCG Download] 已启用代理: %s", config.AppConfig.Texture.ProxyURL)
+		} else {
+			logger.Warnf("[AmbientCG Download] 代理 URL 解析失败: %v", err)
+		}
+	}
+
+	// 获取存储配置
+	localStorageEnabled := config.AppConfig.Texture.LocalStorageEnabled
+	storageDir := config.AppConfig.Texture.StorageDir
+	nasEnabled := config.AppConfig.Texture.NASEnabled
+	nasPath := config.AppConfig.Texture.NASPath
 
 	return &AmbientCGDownloadService{
-		db:      db,
-		logger:  logger,
-		adapter: adapter,
-		httpClient: &http.Client{
-			Timeout: 120 * time.Second,
-		},
+		db:                  db,
+		logger:              logger,
+		adapter:             adapter,
+		httpClient:          client,
+		downloadService:     downloadService,
+		localStorageEnabled: localStorageEnabled,
+		storageDir:          storageDir,
+		nasEnabled:          nasEnabled,
+		nasPath:             nasPath,
 	}
 }
 
@@ -90,8 +125,16 @@ func (s *AmbientCGDownloadService) DownloadTexture(assetID string, opts Download
 
 	s.logInfo("下载完成: %s", zipPath)
 
-	// 6. 解压到目标目录
-	extractPath := filepath.Join("static", "textures", assetID)
+	// 6. 解压到目标目录（根据配置选择存储位置）
+	var extractPath string
+	if s.nasEnabled && s.nasPath != "" {
+		// 使用 NAS 路径
+		extractPath = filepath.Join(s.nasPath, assetID)
+	} else {
+		// 使用本地路径
+		extractPath = filepath.Join(s.storageDir, assetID)
+	}
+	
 	if err := s.extractZip(zipPath, extractPath); err != nil {
 		return nil, fmt.Errorf("解压失败: %w", err)
 	}
@@ -230,14 +273,17 @@ func (s *AmbientCGDownloadService) parseAndSaveFiles(textureID uint, assetID, ex
 		fileName := info.Name()
 		textureType := s.parseTextureType(fileName)
 
+		// 生成 CDN 路径（只保存 assetID/fileName，不包含 textures/ 前缀）
+		cdnPath := filepath.Join(assetID, fileName)
+		cdnPath = strings.ReplaceAll(cdnPath, "\\", "/") // 使用正斜杠
+
 		// 创建文件记录
-		relPath, _ := filepath.Rel("static", path)
 		file := models.File{
 			FileType:    "texture",
 			RelatedID:   textureID,
 			RelatedType: "Texture",
 			LocalPath:   path,
-			CDNPath:     relPath,
+			CDNPath:     cdnPath, // 只保存 assetID/fileName
 			FileName:    fileName,
 			FileSize:    info.Size(),
 			Format:      strings.TrimPrefix(ext, "."),

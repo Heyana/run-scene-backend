@@ -2,11 +2,9 @@ package texture
 
 import (
 	"fmt"
+	"go_wails_project_manager/config"
 	"go_wails_project_manager/models"
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -17,22 +15,25 @@ import (
 
 // AmbientCGSyncService AmbientCG 同步服务（按需下载模式）
 type AmbientCGSyncService struct {
-	db         *gorm.DB
-	logger     *logrus.Logger
-	adapter    *AmbientCGAdapter
-	httpClient *http.Client
+	db              *gorm.DB
+	logger          *logrus.Logger
+	adapter         *AmbientCGAdapter
+	httpClient      *http.Client
+	downloadService *DownloadService // 添加下载服务
 }
 
 // NewAmbientCGSyncService 创建 AmbientCG 同步服务
 func NewAmbientCGSyncService(db *gorm.DB, logger *logrus.Logger) *AmbientCGSyncService {
-	adapter := NewAmbientCGAdapter("https://ambientcg.com", 30*time.Second)
+	adapter := NewAmbientCGAdapter("https://ambientcg.com", 60*time.Second) // 增加超时到 60 秒
+	downloadService := NewDownloadService(db, logger) // 创建下载服务
 
 	return &AmbientCGSyncService{
-		db:      db,
-		logger:  logger,
-		adapter: adapter,
+		db:              db,
+		logger:          logger,
+		adapter:         adapter,
+		downloadService: downloadService, // 使用下载服务
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 60 * time.Second, // 增加超时到 60 秒
 		},
 	}
 }
@@ -73,10 +74,12 @@ func (s *AmbientCGSyncService) SyncMetadata() error {
 	processedCount := 0
 
 	// 并发控制
-	concurrency := 5 // AmbientCG 并发数
+	concurrency := config.AppConfig.Texture.DownloadConcurrency
 	semaphore := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
+
+	s.logInfo("开始并发处理，并发数: %d", concurrency)
 
 	for offset < totalCount {
 		// 获取当前页
@@ -204,66 +207,10 @@ func (s *AmbientCGSyncService) saveMetadata(material *AmbientCGMaterial) error {
 	return nil
 }
 
-// downloadPreview 下载预览图
+// downloadPreview 下载预览图（使用统一的 DownloadService）
 func (s *AmbientCGSyncService) downloadPreview(textureID uint, assetID, previewURL string) error {
-	// 创建目录
-	dir := filepath.Join("static", "textures", assetID)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("创建目录失败: %w", err)
-	}
-
-	// 下载文件
-	savePath := filepath.Join(dir, "thumbnail.png")
-	if err := s.downloadFile(previewURL, savePath); err != nil {
-		return fmt.Errorf("下载文件失败: %w", err)
-	}
-
-	// 获取文件信息
-	fileInfo, err := os.Stat(savePath)
-	if err != nil {
-		return fmt.Errorf("获取文件信息失败: %w", err)
-	}
-
-	// 保存到数据库
-	file := models.File{
-		FileType:    "thumbnail",
-		RelatedID:   textureID,
-		RelatedType: "Texture",
-		OriginalURL: previewURL,
-		LocalPath:   savePath,
-		CDNPath:     filepath.Join("textures", assetID, "thumbnail.png"),
-		FileName:    "thumbnail.png",
-		FileSize:    fileInfo.Size(),
-		Format:      "png",
-		Status:      1, // 已下载
-	}
-
-	if err := s.db.Create(&file).Error; err != nil {
-		return fmt.Errorf("保存文件记录失败: %w", err)
-	}
-
-	return nil
-}
-
-// downloadFile 下载文件
-func (s *AmbientCGSyncService) downloadFile(url, savePath string) error {
-	resp, err := s.httpClient.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("HTTP 状态码: %d", resp.StatusCode)
-	}
-
-	out, err := os.Create(savePath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
+	// 使用统一的下载服务（会自动处理 NAS 配置）
+	_, err := s.downloadService.DownloadThumbnail(textureID, assetID, previewURL)
 	return err
 }
 
@@ -404,26 +351,83 @@ func (s *AmbientCGSyncService) IncrementalSync() error {
 		return err
 	}
 
-	// 获取最新的材质列表（按最新发布排序）
-	limit := 100
-	offset := 0
-	needSyncMaterials := []AmbientCGMaterial{}
+	// 获取本地材质数量
+	var localCount int64
+	s.db.Model(&models.Texture{}).Where("source = ?", "ambientcg").Count(&localCount)
+	s.logInfo("本地已有 %d 个 AmbientCG 材质", localCount)
 
-	// 获取本地最新的发布时间
-	var latestTexture models.Texture
-	err := s.db.Where("source = ?", "ambientcg").Order("date_published DESC").First(&latestTexture).Error
-	var latestDate time.Time
-	if err == nil {
-		latestDate = time.Unix(latestTexture.DatePublished, 0)
-		s.logInfo("本地最新材质发布时间: %s", latestDate.Format("2006-01-02"))
+	// 获取 API 总数
+	firstPage, err := s.adapter.GetMaterialList(1, 0)
+	if err != nil {
+		s.updateSyncLogError(syncLog.ID, fmt.Sprintf("获取材质列表失败: %v", err))
+		return err
+	}
+	totalCount := firstPage.NumberOfResults
+	s.logInfo("AmbientCG API 共有 %d 个材质", totalCount)
+
+	// 如果本地数量已经等于或超过 API 总数，无需同步
+	if localCount >= int64(totalCount) {
+		s.logInfo("本地材质数量已是最新，无需同步")
+		syncLog.Status = 1
+		syncLog.EndTime = time.Now()
+		syncLog.Progress = 100
+		s.db.Save(&syncLog)
+		return nil
 	}
 
-	// 获取最新的材质（最多检查 500 个）
-	maxCheck := 500
-	for offset < maxCheck {
-		page, err := s.adapter.GetMaterialList(limit, offset)
+	// 优化：先批量获取所有已存在的 asset_id
+	var existingAssetIDs []string
+	s.db.Model(&models.Texture{}).
+		Where("source = ?", "ambientcg").
+		Pluck("asset_id", &existingAssetIDs)
+	
+	existingMap := make(map[string]bool, len(existingAssetIDs))
+	for _, id := range existingAssetIDs {
+		existingMap[id] = true
+	}
+
+	// 获取材质列表（检查所有材质，但只处理新的）
+	limit := 100
+	offset := 0
+	
+	// 统计
+	successCount := 0
+	failCount := 0
+	skipCount := 0
+	processedCount := 0
+	totalChecked := 0
+
+	// 并发控制
+	concurrency := config.AppConfig.Texture.DownloadConcurrency
+	semaphore := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	s.logInfo("开始检测新材质，并发数: %d", concurrency)
+
+	for offset < totalCount {
+		// 添加重试机制
+		var page *AmbientCGListResponse
+		var err error
+		maxRetries := 3
+		
+		for retry := 0; retry < maxRetries; retry++ {
+			if retry > 0 {
+				waitTime := time.Duration(retry) * 2 * time.Second
+				s.logInfo("重试获取材质列表 (%d/%d)，等待 %v...", retry+1, maxRetries, waitTime)
+				time.Sleep(waitTime)
+			}
+			
+			page, err = s.adapter.GetMaterialList(limit, offset)
+			if err == nil {
+				break // 成功，跳出重试循环
+			}
+			
+			s.logWarn("获取材质列表失败 (尝试 %d/%d): %v", retry+1, maxRetries, err)
+		}
+		
 		if err != nil {
-			s.logError("获取材质列表失败: %v", err)
+			s.logError("获取材质列表失败，已重试 %d 次: %v", err, maxRetries)
 			break
 		}
 
@@ -431,95 +435,55 @@ func (s *AmbientCGSyncService) IncrementalSync() error {
 			break
 		}
 
+		s.logInfo("正在检查第 %d-%d 个材质...", offset+1, offset+len(page.FoundAssets))
+
 		// 检查每个材质
 		for _, material := range page.FoundAssets {
-			// 解析发布时间
-			releaseDate := s.parseDate(material.ReleaseDate)
-			materialDate := time.Unix(releaseDate, 0)
+			totalChecked++
 
-			// 如果材质发布时间早于本地最新时间，停止检查
-			if !latestDate.IsZero() && materialDate.Before(latestDate) {
-				s.logInfo("遇到旧材质，停止检查: %s (%s)", material.AssetID, materialDate.Format("2006-01-02"))
-				offset = maxCheck // 跳出外层循环
-				break
+			// 快速检查：使用 map 查找，避免数据库查询
+			if existingMap[material.AssetID] {
+				// 已存在，跳过（继续检查下一个）
+				mu.Lock()
+				skipCount++
+				mu.Unlock()
+				continue
 			}
 
-			// 检查是否已存在
-			var existing models.Texture
-			err := s.db.Where("asset_id = ? AND source = ?", material.AssetID, "ambientcg").First(&existing).Error
-			
-			if err == gorm.ErrRecordNotFound {
-				// 新材质
-				needSyncMaterials = append(needSyncMaterials, material)
-				s.logDebug("发现新材质: %s", material.AssetID)
-			} else if err == nil {
-				// 已存在，检查是否需要更新（比较发布时间）
-				if releaseDate > existing.DatePublished {
-					needSyncMaterials = append(needSyncMaterials, material)
-					s.logDebug("发现更新材质: %s", material.AssetID)
+			// 新材质，立即处理（边收集边处理）
+			wg.Add(1)
+			semaphore <- struct{}{}
+
+			go func(mat AmbientCGMaterial) {
+				defer wg.Done()
+				defer func() { <-semaphore }()
+
+				mu.Lock()
+				processedCount++
+				currentProcessed := processedCount
+				mu.Unlock()
+
+				s.logInfo("✓ 发现新材质 [%d]: %s，开始处理...", currentProcessed, mat.AssetID)
+				s.updateProgress(syncLog.ID, currentProcessed, currentProcessed, mat.AssetID)
+
+				// 保存或更新元数据
+				if err := s.saveOrUpdateMetadata(&mat); err != nil {
+					s.logError("保存元数据失败 %s: %v", err, mat.AssetID)
+					mu.Lock()
+					failCount++
+					mu.Unlock()
+					return
 				}
-			}
+
+				s.logInfo("✓ 材质处理成功: %s", mat.AssetID)
+				mu.Lock()
+				successCount++
+				mu.Unlock()
+			}(material)
 		}
 
 		offset += limit
 		time.Sleep(100 * time.Millisecond)
-	}
-
-	totalCount := len(needSyncMaterials)
-	syncLog.TotalCount = totalCount
-	s.db.Save(&syncLog)
-
-	s.logInfo("检测到 %d 个需要同步的材质", totalCount)
-
-	if totalCount == 0 {
-		syncLog.Status = 1
-		syncLog.EndTime = time.Now()
-		syncLog.Progress = 100
-		s.db.Save(&syncLog)
-		s.logInfo("无需同步")
-		return nil
-	}
-
-	// 处理需要同步的材质
-	successCount := 0
-	failCount := 0
-	processedCount := 0
-
-	// 并发控制
-	concurrency := 5
-	semaphore := make(chan struct{}, concurrency)
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-
-	for _, material := range needSyncMaterials {
-		wg.Add(1)
-		semaphore <- struct{}{}
-
-		go func(mat AmbientCGMaterial) {
-			defer wg.Done()
-			defer func() { <-semaphore }()
-
-			mu.Lock()
-			processedCount++
-			currentProcessed := processedCount
-			mu.Unlock()
-
-			s.logInfo("处理材质 [%d/%d]: %s", currentProcessed, totalCount, mat.AssetID)
-			s.updateProgress(syncLog.ID, currentProcessed, totalCount, mat.AssetID)
-
-			// 保存或更新元数据
-			if err := s.saveOrUpdateMetadata(&mat); err != nil {
-				s.logError("保存元数据失败 %s: %v", err, mat.AssetID)
-				mu.Lock()
-				failCount++
-				mu.Unlock()
-				return
-			}
-
-			mu.Lock()
-			successCount++
-			mu.Unlock()
-		}(material)
 	}
 
 	// 等待所有任务完成
@@ -528,14 +492,16 @@ func (s *AmbientCGSyncService) IncrementalSync() error {
 	// 更新同步日志
 	syncLog.Status = 1
 	syncLog.EndTime = time.Now()
-	syncLog.ProcessedCount = totalCount
+	syncLog.TotalCount = totalChecked
+	syncLog.ProcessedCount = processedCount
 	syncLog.SuccessCount = successCount
 	syncLog.FailCount = failCount
+	syncLog.SkipCount = skipCount
 	syncLog.Progress = 100
 	s.db.Save(&syncLog)
 
-	s.logInfo("AmbientCG 增量同步完成: 成功 %d, 失败 %d, 耗时 %v",
-		successCount, failCount, syncLog.EndTime.Sub(syncLog.StartTime))
+	s.logInfo("AmbientCG 增量同步完成: 检查 %d 个，新增 %d 个，成功 %d，失败 %d，跳过 %d，耗时 %v",
+		totalChecked, processedCount, successCount, failCount, skipCount, syncLog.EndTime.Sub(syncLog.StartTime))
 
 	return nil
 }
@@ -570,7 +536,7 @@ func (s *AmbientCGSyncService) saveOrUpdateMetadata(material *AmbientCGMaterial)
 			return fmt.Errorf("创建材质记录失败: %w", err)
 		}
 
-		s.logDebug("新材质已创建: %s (ID: %d)", texture.AssetID, texture.ID)
+		s.logInfo("新材质已创建: %s (ID: %d)", texture.AssetID, texture.ID)
 	} else {
 		// 更新
 		texture.Name = material.DisplayName
@@ -584,7 +550,7 @@ func (s *AmbientCGSyncService) saveOrUpdateMetadata(material *AmbientCGMaterial)
 			return fmt.Errorf("更新材质记录失败: %w", err)
 		}
 
-		s.logDebug("材质已更新: %s (ID: %d)", texture.AssetID, texture.ID)
+		s.logInfo("材质已更新: %s (ID: %d)", texture.AssetID, texture.ID)
 	}
 
 	// 下载预览图（如果还没有）

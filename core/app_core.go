@@ -131,13 +131,23 @@ func (a *AppCore) InitTextureService() error {
 	a.TextureSyncService.StartScheduler()
 	a.Log.Info("贴图同步调度器已启动")
 
-	// 启动后自动执行一次增量同步
+	// 启动后自动执行一次增量同步（PolyHaven + AmbientCG）
 	go func() {
-		a.Log.Info("启动后自动执行增量同步...")
+		// 1. PolyHaven 增量同步
+		a.Log.Info("启动后自动执行 PolyHaven 增量同步...")
 		if err := a.TextureSyncService.IncrementalSync(); err != nil {
-			a.Log.Errorf("自动同步失败: %v", err)
+			a.Log.Errorf("PolyHaven 自动同步失败: %v", err)
 		} else {
-			a.Log.Info("自动同步完成")
+			a.Log.Info("PolyHaven 自动同步完成")
+		}
+
+		// 2. AmbientCG 增量同步
+		a.Log.Info("启动后自动执行 AmbientCG 增量同步...")
+		ambientcgService := textureServices.NewAmbientCGSyncService(db, a.Log)
+		if err := ambientcgService.IncrementalSync(); err != nil {
+			a.Log.Errorf("AmbientCG 自动同步失败: %v", err)
+		} else {
+			a.Log.Info("AmbientCG 自动同步完成")
 		}
 	}()
 

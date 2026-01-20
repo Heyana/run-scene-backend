@@ -42,6 +42,11 @@ func RunOnceUpgrade(db *gorm.DB) error {
 		logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
 	}
 
+	// 7. 修复 CDN 路径中的 textures/textures/ 重复问题
+	if err := fixDuplicateTexturesInCDNPath(db); err != nil {
+		logger.Log.Errorf("修复 CDN 路径失败: %v", err)
+	}
+
 	logger.Log.Info("所有升级任务执行完成")
 	return nil
 }
@@ -433,4 +438,43 @@ func joinStrings(strs []string, sep string) string {
 		result += sep + strs[i]
 	}
 	return result
+}
+
+// fixDuplicateTexturesInCDNPath 修复 CDN 路径中的 textures/textures/ 重复问题
+func fixDuplicateTexturesInCDNPath(db *gorm.DB) error {
+	logger.Log.Info("开始修复 CDN 路径中的重复 textures/ 前缀...")
+
+	// 查找所有包含 textures/textures/ 的文件记录
+	var files []models.File
+	if err := db.Where("cdn_path LIKE ?", "textures/textures/%").Find(&files).Error; err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		logger.Log.Info("没有找到需要修复的文件")
+		return nil
+	}
+
+	logger.Log.Infof("找到 %d 个需要修复的文件，开始修复...", len(files))
+
+	fixedCount := 0
+	for _, file := range files {
+		// 移除第一个 textures/ 前缀
+		// textures/textures/AssetID/file.png -> textures/AssetID/file.png
+		newCDNPath := file.CDNPath[9:] // 跳过前 9 个字符 "textures/"
+		
+		// 更新数据库
+		if err := db.Model(&file).Update("cdn_path", newCDNPath).Error; err != nil {
+			logger.Log.Errorf("更新文件 %d 失败: %v", file.ID, err)
+			continue
+		}
+		
+		fixedCount++
+		if fixedCount%100 == 0 {
+			logger.Log.Infof("已修复 %d/%d 个文件...", fixedCount, len(files))
+		}
+	}
+
+	logger.Log.Infof("成功修复 %d 个文件的 CDN 路径", fixedCount)
+	return nil
 }

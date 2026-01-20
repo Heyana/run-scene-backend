@@ -10,7 +10,7 @@ bin = "./tmp/app.exe"
 # 监听这些文件扩展名
 include_ext = ["go", "env"]
 # 忽略这些文件夹
-exclude_dir = ["frontend", "build", "tmp", "vendor", "static", "docs", "data", "data/audit_archives", "data/uploads"]
+exclude_dir = ["frontend", "build", "tmp","temp", "vendor", "static", "docs", "data", "data/audit_archives", "data/uploads"]
 # 停止时清理
 clean_on_exit = true
 # 发送系统通知
