@@ -1,0 +1,319 @@
+@import "./color.less";
+.page {
+  position: absolute;
+}
+
+// ==================== 颜色变量 ====================
+@bg-primary: #edeff6;
+@bg-white: #fff;
+@bg-white-alpha: rgba(255, 255, 255, 0.7);
+@bgab02: rgba(0, 0, 0, 0.02);
+@bgab03: rgba(0, 0, 0, 0.03);
+@bgab05: rgba(0, 0, 0, 0.05);
+@bgab1: rgba(0, 0, 0, 0.1);
+@shadow-light: rgba(0, 0, 0, 0.1);
+@shadow-card: #eee;
+@border-light: #e0e0e0;
+@text-primary: rgba(0, 0, 0, 0.6);
+@text-secondary: rgba(0, 0, 0, 0.4);
+@text-normal: #666;
+@hover-bg: #e8e8e8;
+@active-bg: rgba(171, 207, 234);
+@active-bg-deep: #476da9;
+@tag-bg: #eee;
+
+// ==================== 字体大小变量 ====================
+@text-xs: 12px;
+@text-sm: 14px;
+@text-md: 16px;
+@text-lg: 18px;
+@text-xl: 20px;
+
+// ==================== 基础工具类 ====================
+.bgc {
+  background-color: @bg-primary;
+}
+
+.full {
+  width: 100%;
+  height: 100%;
+}
+
+.w {
+  width: 100%;
+}
+
+.h {
+  height: 100%;
+}
+
+.f {
+  display: flex;
+}
+.fw {
+  .f;
+  flex-wrap: wrap;
+}
+.df {
+  display: flex;
+}
+.fd {
+  display: flex;
+  flex-direction: column;
+}
+.fc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fcr {
+  display: flex;
+  justify-content: center;
+}
+
+.fcc {
+  display: flex;
+  align-items: center;
+}
+.fbt {
+  display: flex;
+  justify-content: space-between;
+}
+
+.dfr {
+  display: flex;
+  justify-content: flex-end;
+}
+.f2_8 {
+  .df;
+  div:first-child {
+    flex: 2;
+  }
+  div:last-child {
+    flex: 8;
+  }
+}
+.f3_7 {
+  .df;
+  div:first-child {
+    flex: 3;
+  }
+  div:last-child {
+    flex: 7;
+  }
+}
+.text_m {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: @text-sm;
+  .text_m_color;
+  // max-width: 100%; /* 确保元素有最大宽度限制 */
+  // display: inline-block; /* 使内联元素可以应用宽度限制 */
+}
+.text_l_color {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: @text-sm;
+  color: @text-primary;
+}
+.text_xl {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: @text-sm;
+  color: @text-primary;
+}
+.text_l_color {
+  color: @text-primary;
+}
+.text_m_ellipsis {
+  .text_m;
+  max-width: 100%;
+  display: inline-block;
+}
+.text_m_color {
+  color: @text-secondary;
+}
+
+.gap5 {
+  gap: 5px;
+}
+.gap10 {
+  gap: 10px;
+}
+.gap12 {
+  gap: 12px;
+}
+.gap20 {
+  gap: 20px;
+}
+.x_scroll {
+  // overflow-y: scroll !important;
+}
+
+.h30 {
+  height: 30px;
+}
+.h25 {
+  height: 25px;
+}
+
+.dg {
+  display: grid;
+}
+.dg3 {
+  .dg;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.btna {
+  border-radius: 5px;
+  padding: 3px 5px;
+  cursor: pointer;
+  .text_l_color;
+  background-color: @bgab02;
+  &:hover {
+    background-color: color-mix(
+      in srgb,
+      currentColor 10%,
+      rgba(0, 0, 0, 0.1) 10%
+    );
+  }
+}
+
+.pd5 {
+  padding: 5px;
+}
+.pd10 {
+  padding: 10px;
+}
+
+.pdl5 {
+  padding: 0px 5px;
+}
+.pdt5 {
+  padding: 5px 0px;
+}
+.pdt10 {
+  padding: 10px 0px;
+}
+.pdl10 {
+  padding: 0px 10px;
+}
+.pdb10 {
+  padding-bottom: 10px;
+}
+.box20 {
+  width: 20px;
+  height: 20px;
+}
+.box25 {
+  width: 25px;
+  height: 25px;
+}
+.box30 {
+  width: 30px;
+  height: 30px;
+}
+.box40 {
+  width: 40px;
+  height: 40px;
+}
+.w50 {
+  width: 50px;
+}
+.w70 {
+  width: 70px;
+}
+
+.w100 {
+  width: 100px;
+}
+.w350 {
+  width: 350px;
+}
+.w300 {
+  width: 300px;
+}
+
+.w250 {
+  width: 250px;
+}
+.w200 {
+  width: 200px;
+}
+.w300 {
+  width: 300px;
+}
+.w400 {
+  width: 400px;
+}
+.k_v {
+  .fcc;
+  .fbt;
+  > div:first-child {
+    width: 100px;
+  }
+  > div:last-child {
+    width: calc(100% - 100px);
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.mgl5 {
+  margin-left: 5px;
+}
+
+.mgb10 {
+  margin-bottom: 10px;
+}
+
+.r {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.box(@width: 10) {
+  width: @width * 1px;
+  height: @width * 1px;
+}
+
+.mg0a {
+  margin: 0px auto;
+}
+
+.ha {
+  height: auto;
+}
+
+.h100 {
+  height: 100px;
+}
+.h200 {
+  height: 200px;
+}
+
+.f_bgc {
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  // overflow-y: auto;
+  // overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid #fff;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: -8px 0 20px 0 rgba(170, 200, 255, 0.3);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+  border: 1px solid #fff;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.one_line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

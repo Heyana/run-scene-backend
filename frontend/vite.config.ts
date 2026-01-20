@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [vue(), vueJsx()],
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      "@": resolve(__dirname, "./src"),
     },
   },
   server: {
@@ -22,6 +22,18 @@ export default defineConfig({
       "/textures": {
         target: "http://192.168.3.39:23359", // 代理材质文件请求
         changeOrigin: true,
+      },
+    },
+  },
+  css: {
+    preprocessorOptions: {
+      less: {
+        javascriptEnabled: true,
+        additionalData: `@import "@/styles/vars/index.less";
+@import "@/styles/vars/class.less";
+@import "@/styles/vars/other.less";
+@import "@/styles/vars.less";
+@import "@/styles/scoped-var.less";`,
       },
     },
   },

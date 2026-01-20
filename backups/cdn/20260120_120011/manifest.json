@@ -1,0 +1,13 @@
+{
+  "backup_time": "2026-01-20T12:00:11.9146375+08:00",
+  "total_files": 1,
+  "total_size": 4,
+  "files": [
+    {
+      "relative_path": "test.txt",
+      "size": 4,
+      "mod_time": "2026-01-19T14:20:28.1581345+08:00"
+    }
+  ],
+  "environment": "dev"
+}
