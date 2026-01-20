@@ -27,6 +27,7 @@ type File struct {
 	Status        int        `gorm:"default:0;index" json:"status"`
 	DownloadRetry int        `gorm:"default:0" json:"download_retry"`
 	LastError     string     `gorm:"type:text" json:"last_error"`
+	TextureType   string     `gorm:"size:50;index" json:"texture_type"` // 贴图类型：Diffuse, Rough, Normal 等
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	DeletedAt     *time.Time `gorm:"index" json:"deleted_at"`
