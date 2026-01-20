@@ -230,74 +230,81 @@ func splitPath(path string) []string {
 func updateTextureSyncStatus(db *gorm.DB) error {
 	logger.Log.Info("开始更新材质同步状态...")
 
-	// 查找所有材质
+	// 按需下载模式：只更新状态不一致的材质
+	// 查找状态可能不一致的材质（有文件但状态为0，或无文件但状态为2）
 	var textures []models.Texture
-	if err := db.Find(&textures).Error; err != nil {
+	if err := db.Where("sync_status IN (0, 3)").Find(&textures).Error; err != nil {
 		return err
 	}
 
 	if len(textures) == 0 {
-		logger.Log.Info("没有找到材质记录")
+		logger.Log.Info("没有找到需要更新状态的材质")
 		return nil
 	}
 
-	logger.Log.Infof("找到 %d 个材质，开始检查文件状态...", len(textures))
+	logger.Log.Infof("找到 %d 个需要检查的材质...", len(textures))
 
 	updatedCount := 0
-	for _, texture := range textures {
-		// 查询该材质的所有文件
-		var files []models.File
-		if err := db.Where("related_id = ? AND related_type = ?", texture.ID, "Texture").Find(&files).Error; err != nil {
-			logger.Log.Warnf("查询材质文件失败 (texture_id=%d): %v", texture.ID, err)
-			continue
+	batchSize := 100
+	
+	for i := 0; i < len(textures); i += batchSize {
+		end := i + batchSize
+		if end > len(textures) {
+			end = len(textures)
 		}
+		
+		batch := textures[i:end]
+		
+		for _, texture := range batch {
+			// 查询该材质的文件数量（优化：只查数量）
+			var thumbnailCount int64
+			var textureCount int64
+			
+			db.Model(&models.File{}).
+				Where("related_id = ? AND related_type = ? AND file_type = ?", texture.ID, "Texture", "thumbnail").
+				Count(&thumbnailCount)
+			
+			db.Model(&models.File{}).
+				Where("related_id = ? AND related_type = ? AND file_type = ?", texture.ID, "Texture", "texture").
+				Count(&textureCount)
 
-		// 检查是否有缩略图和贴图文件
-		hasThumbnail := false
-		hasTextures := false
+			// 按需下载模式的状态判断
+			newSyncStatus := texture.SyncStatus
+			newDownloadCompleted := texture.DownloadCompleted
 
-		for _, file := range files {
-			if file.FileType == "thumbnail" {
-				hasThumbnail = true
-			} else if file.FileType == "texture" {
-				hasTextures = true
-			}
-		}
-
-		// 根据文件情况更新状态
-		newSyncStatus := texture.SyncStatus
-		newDownloadCompleted := texture.DownloadCompleted
-
-		if len(files) == 0 {
-			// 没有文件，未同步
-			newSyncStatus = 0
-			newDownloadCompleted = false
-		} else if hasThumbnail && hasTextures {
-			// 有缩略图和贴图，已同步完成
-			newSyncStatus = 2
-			newDownloadCompleted = true
-		} else if hasThumbnail || hasTextures {
-			// 只有部分文件，同步中
-			newSyncStatus = 1
-			newDownloadCompleted = false
-		} else {
-			// 有文件但类型不明确，标记为同步中
-			newSyncStatus = 1
-			newDownloadCompleted = false
-		}
-
-		// 如果状态有变化，更新数据库
-		if newSyncStatus != texture.SyncStatus || newDownloadCompleted != texture.DownloadCompleted {
-			if err := db.Model(&texture).Updates(map[string]interface{}{
-				"sync_status":        newSyncStatus,
-				"download_completed": newDownloadCompleted,
-			}).Error; err != nil {
-				logger.Log.Warnf("更新材质状态失败 (id=%d): %v", texture.ID, err)
+			if thumbnailCount > 0 && textureCount > 0 {
+				// 有缩略图和贴图，已完全下载
+				newSyncStatus = 2
+				newDownloadCompleted = true
+			} else if thumbnailCount > 0 {
+				// 只有缩略图，元数据已同步，等待按需下载
+				newSyncStatus = 2
+				newDownloadCompleted = false
+			} else if textureCount > 0 {
+				// 只有贴图没有缩略图（异常情况）
+				newSyncStatus = 1
+				newDownloadCompleted = false
 			} else {
-				updatedCount++
-				logger.Log.Debugf("更新材质 %s: sync_status=%d, download_completed=%v (文件数=%d, 缩略图=%v, 贴图=%v)",
-					texture.AssetID, newSyncStatus, newDownloadCompleted, len(files), hasThumbnail, hasTextures)
+				// 没有文件，未同步
+				newSyncStatus = 0
+				newDownloadCompleted = false
 			}
+
+			// 如果状态有变化，更新数据库
+			if newSyncStatus != texture.SyncStatus || newDownloadCompleted != texture.DownloadCompleted {
+				if err := db.Model(&texture).Updates(map[string]interface{}{
+					"sync_status":        newSyncStatus,
+					"download_completed": newDownloadCompleted,
+				}).Error; err != nil {
+					logger.Log.Warnf("更新材质状态失败 (id=%d): %v", texture.ID, err)
+				} else {
+					updatedCount++
+				}
+			}
+		}
+		
+		if (i+batchSize) < len(textures) {
+			logger.Log.Infof("已处理 %d/%d 个材质...", i+batchSize, len(textures))
 		}
 	}
 
@@ -358,56 +365,57 @@ func analyzeTextureTypes(db *gorm.DB) error {
 func updateTextureTypesList(db *gorm.DB) error {
 	logger.Log.Info("开始更新材质的贴图类型列表...")
 
-	// 查询所有材质
+	// 只查询 texture_types 为空的材质
 	var textures []models.Texture
-	if err := db.Find(&textures).Error; err != nil {
+	if err := db.Where("texture_types IS NULL OR texture_types = ''").Find(&textures).Error; err != nil {
 		return err
 	}
 
 	if len(textures) == 0 {
-		logger.Log.Info("没有找到材质记录")
+		logger.Log.Info("所有材质的贴图类型列表已是最新")
 		return nil
 	}
 
-	logger.Log.Infof("找到 %d 个材质，开始更新贴图类型列表...", len(textures))
+	logger.Log.Infof("找到 %d 个需要更新的材质...", len(textures))
 
 	updatedCount := 0
-	for _, texture := range textures {
-		// 查询该材质的所有文件
-		var files []models.File
-		if err := db.Where("related_id = ? AND related_type = ? AND file_type = ?", 
-			texture.ID, "Texture", "texture").Find(&files).Error; err != nil {
-			logger.Log.Warnf("查询材质文件失败 (texture_id=%d): %v", texture.ID, err)
-			continue
+	batchSize := 100
+	
+	for i := 0; i < len(textures); i += batchSize {
+		end := i + batchSize
+		if end > len(textures) {
+			end = len(textures)
 		}
-
-		// 收集所有唯一的贴图类型
-		typeSet := make(map[string]bool)
-		for _, file := range files {
-			if file.TextureType != "" {
-				typeSet[file.TextureType] = true
-			}
-		}
-
-		// 转换为逗号分隔的字符串
-		var types []string
-		for textureType := range typeSet {
-			types = append(types, textureType)
-		}
-
-		if len(types) > 0 {
-			textureTypes := joinStrings(types, ",")
-			
-			// 更新材质的 texture_types 字段
-			if err := db.Model(&texture).Update("texture_types", textureTypes).Error; err != nil {
-				logger.Log.Warnf("更新材质贴图类型列表失败 (id=%d): %v", texture.ID, err)
+		
+		batch := textures[i:end]
+		
+		for _, texture := range batch {
+			// 查询该材质的所有文件的贴图类型（优化：只查询 texture_type 字段）
+			var textureTypes []string
+			if err := db.Model(&models.File{}).
+				Where("related_id = ? AND related_type = ? AND file_type = ? AND texture_type != ''", 
+					texture.ID, "Texture", "texture").
+				Distinct("texture_type").
+				Pluck("texture_type", &textureTypes).Error; err != nil {
+				logger.Log.Warnf("查询材质文件失败 (texture_id=%d): %v", texture.ID, err)
 				continue
 			}
-			
-			updatedCount++
-			if updatedCount%50 == 0 {
-				logger.Log.Infof("已处理 %d/%d 个材质...", updatedCount, len(textures))
+
+			if len(textureTypes) > 0 {
+				textureTypesStr := joinStrings(textureTypes, ",")
+				
+				// 更新材质的 texture_types 字段
+				if err := db.Model(&texture).Update("texture_types", textureTypesStr).Error; err != nil {
+					logger.Log.Warnf("更新材质贴图类型列表失败 (id=%d): %v", texture.ID, err)
+					continue
+				}
+				
+				updatedCount++
 			}
+		}
+		
+		if (i+batchSize) < len(textures) {
+			logger.Log.Infof("已处理 %d/%d 个材质...", i+batchSize, len(textures))
 		}
 	}
 

@@ -101,7 +101,6 @@ func (s *SyncService) FullSync() error {
 	// 并发处理每个材质
 	successCount := 0
 	failCount := 0
-	skipCount := 0
 	processedCount := 0
 
 	// 创建工作队列，同时保存缩略图 URL
@@ -109,9 +108,32 @@ func (s *SyncService) FullSync() error {
 		AssetID      string
 		ThumbnailURL string
 	}
+	
+	// 优化：一次性获取所有已同步的 asset_id（避免逐个查询）
+	var existingAssetIDs []string
+	s.db.Model(&models.Texture{}).
+		Where("sync_status = ?", 2). // 只查询已同步的
+		Pluck("asset_id", &existingAssetIDs)
+	
+	// 转换为 map 以便快速查找
+	existingMap := make(map[string]bool, len(existingAssetIDs))
+	for _, id := range existingAssetIDs {
+		existingMap[id] = true
+	}
+	
+	s.logInfo("本地已有 %d 个已同步材质，将跳过", len(existingAssetIDs))
+	
 	jobs := make([]TextureJob, 0, totalCount)
 	debugCount := 0
+	skippedCount := 0
+	
 	for assetID, data := range textureMap {
+		// 快速检查：如果已存在且已同步，直接跳过
+		if existingMap[assetID] {
+			skippedCount++
+			continue
+		}
+		
 		job := TextureJob{AssetID: assetID}
 		
 		// 只对前3个材质打印详细调试信息
@@ -144,6 +166,23 @@ func (s *SyncService) FullSync() error {
 		
 		jobs = append(jobs, job)
 		debugCount++
+	}
+	
+	s.logInfo("跳过 %d 个已同步材质，需要处理 %d 个材质", skippedCount, len(jobs))
+	
+	// 更新实际需要处理的数量
+	totalCount = len(jobs)
+	syncLog.TotalCount = totalCount
+	syncLog.SkipCount = skippedCount
+	s.db.Save(&syncLog)
+	
+	if totalCount == 0 {
+		s.logInfo("所有材质已同步，无需处理")
+		syncLog.Status = 1
+		syncLog.EndTime = time.Now()
+		syncLog.Progress = 100
+		s.db.Save(&syncLog)
+		return nil
 	}
 	
 	s.logInfo("共提取 %d 个材质，其中 %d 个有缩略图 URL", len(jobs), func() int {
@@ -182,16 +221,6 @@ func (s *SyncService) FullSync() error {
 			// 更新进度
 			s.updateProgress(syncLog.ID, currentProcessed, totalCount, j.AssetID)
 
-			// 检查是否已完成下载
-			var existingTexture models.Texture
-			if err := s.db.Where("asset_id = ? AND download_completed = ?", j.AssetID, true).First(&existingTexture).Error; err == nil {
-				s.logInfo("材质已完成下载，跳过: %s", j.AssetID)
-				mu.Lock()
-				skipCount++
-				mu.Unlock()
-				return
-			}
-
 			// 处理单个材质（传入缩略图 URL）
 			if err := s.processTextureWithThumbnail(j.AssetID, j.ThumbnailURL); err != nil {
 				s.logError("处理失败 %s: %v", err, j.AssetID)
@@ -210,18 +239,18 @@ func (s *SyncService) FullSync() error {
 	wg.Wait()
 	s.logInfo("所有材质处理完成")
 
-	// 更新同步日志
+	// 更新同步日志（skipCount 已在前面计算）
 	syncLog.Status = 1 // 成功
 	syncLog.EndTime = time.Now()
 	syncLog.ProcessedCount = totalCount
 	syncLog.SuccessCount = successCount
 	syncLog.FailCount = failCount
-	syncLog.SkipCount = skipCount
+	// syncLog.SkipCount 已在前面设置
 	syncLog.Progress = 100
 	s.db.Save(&syncLog)
 
 	s.logInfo("全量同步完成: 成功 %d, 失败 %d, 跳过 %d, 耗时 %v",
-		successCount, failCount, skipCount, syncLog.EndTime.Sub(syncLog.StartTime))
+		successCount, failCount, syncLog.SkipCount, syncLog.EndTime.Sub(syncLog.StartTime))
 
 	return nil
 }
@@ -254,25 +283,49 @@ func (s *SyncService) IncrementalSync() error {
 	}
 	var needSyncJobs []TextureJob
 	
+	// 优化：一次性获取所有已同步的 asset_id（避免逐个查询）
+	var existingAssetIDs []string
+	s.db.Model(&models.Texture{}).
+		Where("sync_status = ?", 2). // 只查询已同步的
+		Pluck("asset_id", &existingAssetIDs)
+	
+	// 转换为 map 以便快速查找
+	existingMap := make(map[string]bool, len(existingAssetIDs))
+	for _, id := range existingAssetIDs {
+		existingMap[id] = true
+	}
+	
+	s.logInfo("本地已有 %d 个已同步材质", len(existingAssetIDs))
+	
+	// 遍历 API 返回的材质列表
 	for assetID, data := range textureList {
+		// 快速检查：如果已存在且已同步，直接跳过
+		if existingMap[assetID] {
+			continue
+		}
+		
 		dataMap := data.(map[string]interface{})
 		filesHash := dataMap["files_hash"].(string)
 
 		var texture models.Texture
 		err := s.db.Where("asset_id = ?", assetID).First(&texture).Error
 
-		// 跳过已完成下载的材质
-		if err == nil && texture.DownloadCompleted {
-			continue
-		}
-
-		if err == gorm.ErrRecordNotFound || (err == nil && texture.FilesHash != filesHash) {
-			// 新增材质或材质已更新
+		if err == gorm.ErrRecordNotFound {
+			// 新材质
 			job := TextureJob{AssetID: assetID}
 			if thumbURL, ok := dataMap["thumbnail_url"].(string); ok {
 				job.ThumbnailURL = thumbURL
 			}
 			needSyncJobs = append(needSyncJobs, job)
+		} else if err == nil && texture.SyncStatus != 2 {
+			// 存在但未同步完成，或者 files_hash 变化
+			if texture.FilesHash != filesHash {
+				job := TextureJob{AssetID: assetID}
+				if thumbURL, ok := dataMap["thumbnail_url"].(string); ok {
+					job.ThumbnailURL = thumbURL
+				}
+				needSyncJobs = append(needSyncJobs, job)
+			}
 		}
 	}
 
@@ -357,9 +410,8 @@ func (s *SyncService) processTextureWithThumbnail(assetID string, thumbnailURL s
 		s.logError("处理标签失败: %v", err)
 	}
 
-	// 标记下载状态
+	// 按需下载模式：只下载缩略图，不下载贴图
 	thumbnailDownloaded := false
-	texturesDownloaded := false
 
 	// 下载缩略图
 	if config.AppConfig.Texture.DownloadThumbnail && thumbnailURL != "" {
@@ -375,35 +427,20 @@ func (s *SyncService) processTextureWithThumbnail(assetID string, thumbnailURL s
 		thumbnailDownloaded = true // 如果不需要下载，也标记为已完成
 	}
 
-	// 下载贴图文件
-	if config.AppConfig.Texture.DownloadTextures {
-		// 获取文件列表
-		filesDetail, err := s.fetchTextureFiles(assetID)
-		if err != nil {
-			s.logError("获取文件列表失败: %v", err)
-		} else {
-			if err := s.downloadService.DownloadAndConvert(texture.ID, assetID, filesDetail); err != nil {
-				s.logError("下载贴图失败: %v", err)
-			} else {
-				texturesDownloaded = true
-			}
-		}
-	} else {
-		texturesDownloaded = true // 如果不需要下载，也标记为已完成
-	}
+	// ⚠️ 按需下载模式：不再自动下载贴图文件
+	// 贴图文件将在用户点击使用时才下载
+	s.logInfo("元数据同步完成（按需下载模式）: %s", assetID)
 
 	// 更新同步状态
-	// 如果缩略图和贴图都下载成功，标记为已完成
-	if thumbnailDownloaded && texturesDownloaded {
-		texture.SyncStatus = 2 // 已同步
-		texture.DownloadCompleted = true
-		s.logInfo("材质下载完成: %s", assetID)
-	} else if !thumbnailDownloaded || !texturesDownloaded {
-		// 如果有任何下载失败，标记为失败
-		texture.SyncStatus = 3 // 失败
-		s.logInfo("材质下载未完成: %s (缩略图: %v, 贴图: %v)", assetID, thumbnailDownloaded, texturesDownloaded)
+	if thumbnailDownloaded {
+		texture.SyncStatus = 2 // 已同步元数据
+		texture.DownloadCompleted = false // ⚠️ 标记为未下载贴图
+		texture.Source = "polyhaven" // 标记数据来源
+		s.logInfo("材质元数据已同步，等待按需下载: %s", assetID)
 	} else {
-		texture.SyncStatus = 1 // 同步中（部分完成）
+		// 如果缩略图下载失败，标记为失败
+		texture.SyncStatus = 3 // 失败
+		s.logInfo("缩略图下载失败: %s", assetID)
 	}
 	
 	s.db.Save(texture)
@@ -486,6 +523,11 @@ func (s *SyncService) fetchTextureDetail(assetID string) (map[string]interface{}
 	}
 
 	return result, nil
+}
+
+// fetchTextureFiles 获取材质文件列表（导出供其他服务使用）
+func (s *SyncService) FetchTextureFiles(assetID string) (map[string]interface{}, error) {
+	return s.fetchTextureFiles(assetID)
 }
 
 // fetchTextureFiles 获取材质文件列表

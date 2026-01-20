@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/database"
 	"go_wails_project_manager/logger"
@@ -11,10 +12,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // TextureController 贴图控制器
 type TextureController struct {
+	db           *gorm.DB
 	syncService  *texture.SyncService
 	queryService *texture.QueryService
 	tagService   *texture.TagService
@@ -24,6 +27,7 @@ type TextureController struct {
 func NewTextureController() *TextureController {
 	db := database.MustGetDB()
 	return &TextureController{
+		db:           db,
 		syncService:  texture.GetGlobalSyncService(),
 		queryService: texture.NewQueryService(db),
 		tagService:   texture.NewTagService(db),
@@ -224,7 +228,8 @@ func (c *TextureController) GetTexturesByTag(ctx *gin.Context) {
 // @Router /api/textures/sync [post]
 func (c *TextureController) TriggerSync(ctx *gin.Context) {
 	var req struct {
-		Type string `json:"type" binding:"required"` // full | incremental
+		Type   string `json:"type" binding:"required"`   // full | incremental | ambientcg
+		Source string `json:"source"`                    // polyhaven | ambientcg (可选，用于区分数据源)
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -241,10 +246,24 @@ func (c *TextureController) TriggerSync(ctx *gin.Context) {
 	// 异步执行同步任务
 	go func() {
 		var err error
-		if req.Type == "full" {
-			err = c.syncService.FullSync()
+		
+		// 如果是 AmbientCG 同步
+		if req.Type == "ambientcg" || req.Source == "ambientcg" {
+			logger.Log.Info("开始 AmbientCG 元数据同步...")
+			ambientcgService := texture.NewAmbientCGSyncService(c.db, logger.Log)
+			err = ambientcgService.SyncMetadata()
+		} else if req.Type == "ambientcg_incremental" {
+			// AmbientCG 增量同步
+			logger.Log.Info("开始 AmbientCG 增量同步...")
+			ambientcgService := texture.NewAmbientCGSyncService(c.db, logger.Log)
+			err = ambientcgService.IncrementalSync()
 		} else {
-			err = c.syncService.IncrementalSync()
+			// PolyHaven 同步
+			if req.Type == "full" {
+				err = c.syncService.FullSync()
+			} else {
+				err = c.syncService.IncrementalSync()
+			}
 		}
 
 		if err != nil {
@@ -255,6 +274,7 @@ func (c *TextureController) TriggerSync(ctx *gin.Context) {
 	response.Success(ctx, gin.H{
 		"message": "同步任务已启动",
 		"type":    req.Type,
+		"source":  req.Source,
 	})
 }
 
@@ -377,5 +397,87 @@ func (c *TextureController) GetThreeJSTypes(ctx *gin.Context) {
 	response.Success(ctx, gin.H{
 		"types": typeInfo,
 		"count": len(typeInfo),
+	})
+}
+
+
+// DownloadTexture 触发材质下载（统一按需下载）
+// @Summary 触发材质下载
+// @Tags Texture
+// @Param assetId path string true "Asset ID"
+// @Param body body object false "下载选项"
+// @Success 200 {object} response.Response
+// @Router /api/textures/download/:assetId [post]
+func (c *TextureController) DownloadTexture(ctx *gin.Context) {
+	assetID := ctx.Param("assetId")
+	if assetID == "" {
+		response.Error(ctx, http.StatusBadRequest, "Asset ID 不能为空")
+		return
+	}
+
+	// 解析下载选项
+	var opts texture.DownloadOptions
+	opts.Resolution = ctx.DefaultQuery("resolution", "2K")
+	opts.Format = ctx.DefaultQuery("format", "JPG")
+
+	// 也支持从 body 中获取
+	if ctx.Request.ContentLength > 0 {
+		ctx.ShouldBindJSON(&opts)
+	}
+
+	// 创建统一下载服务（自动识别数据源）
+	downloadService := texture.NewUnifiedDownloadService(c.db, logger.Log)
+
+	// 执行下载
+	files, err := downloadService.DownloadTexture(assetID, opts)
+	if err != nil {
+		logger.Log.Errorf("下载材质失败: %v", err)
+		response.Error(ctx, http.StatusInternalServerError, fmt.Sprintf("下载失败: %v", err))
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"message":            "下载成功",
+		"asset_id":           assetID,
+		"download_completed": true,
+		"files":              files,
+		"file_count":         len(files),
+	})
+}
+
+// CheckDownloadStatus 检查下载状态
+// @Summary 检查材质下载状态
+// @Tags Texture
+// @Param assetId path string true "Asset ID"
+// @Success 200 {object} response.Response
+// @Router /api/textures/download-status/:assetId [get]
+func (c *TextureController) CheckDownloadStatus(ctx *gin.Context) {
+	assetID := ctx.Param("assetId")
+	if assetID == "" {
+		response.Error(ctx, http.StatusBadRequest, "Asset ID 不能为空")
+		return
+	}
+
+	// 查询材质
+	var texture models.Texture
+	if err := c.db.Where("asset_id = ?", assetID).First(&texture).Error; err != nil {
+		response.Error(ctx, http.StatusNotFound, "材质不存在")
+		return
+	}
+
+	// 如果已下载，获取文件列表
+	var files []models.File
+	if texture.DownloadCompleted {
+		c.db.Where("related_id = ? AND related_type = ? AND file_type = ?",
+			texture.ID, "Texture", "texture").Find(&files)
+	}
+
+	response.Success(ctx, gin.H{
+		"asset_id":           texture.AssetID,
+		"download_completed": texture.DownloadCompleted,
+		"has_preview":        true, // 元数据同步时已下载预览图
+		"source":             texture.Source,
+		"files":              files,
+		"file_count":         len(files),
 	})
 }
