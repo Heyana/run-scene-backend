@@ -106,15 +106,15 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			filepath = filepath[1:]
 		}
 		
-		// 拼接完整路径
+		// 拼接完整路径（使用 path.Join 而不是 filepath.Join，保持正斜杠）
 		fullPath := textureDir
-		if !strings.HasSuffix(fullPath, "\\") && !strings.HasSuffix(fullPath, "/") {
-			fullPath += "\\"
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
 		}
 		fullPath += filepath
 		
-		// 将正斜杠转换为反斜杠（Windows 路径）
-		fullPath = strings.ReplaceAll(fullPath, "/", "\\")
+		// 不再强制转换路径分隔符，保持原样
+		// Linux 使用正斜杠，Windows 使用反斜杠都能正常工作
 		
 		logger.Log.Infof("请求文件: %s -> %s", filepath, fullPath)
 		

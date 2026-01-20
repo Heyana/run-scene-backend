@@ -1,0 +1,112 @@
+# ===========================================
+# 应用配置文件示例
+# 复制此文件为 config.yaml 并根据需要修改配置
+# ===========================================
+
+# 应用基础配置
+app:
+  # 应用环境: development | production
+  env: development
+
+  # 项目名称（用于日志、systemd service等）
+  name: go_wails_project_manager
+
+  # 服务器端口
+  port: 23357
+
+# 网络配置
+network:
+  # 内网配置（开发环境）
+  local:
+    ip: 192.168.3.39
+    cdn_port: 23357
+
+  # 公网配置（生产环境）
+  public:
+    ip: 111.229.160.27
+    cdn_port: 23357
+
+# CDN配置
+cdn:
+  # CDN基础URL（如果设置了此项，会优先使用这个值）
+  # 留空则自动根据环境生成：
+  # - 开发环境: http://{local.ip}:{local.cdn_port}/cdn/
+  # - 生产环境: http://{public.ip}:{public.cdn_port}/cdn/
+  base_url: ""
+
+# API文档配置
+api_docs:
+  # API文档基础URL（如果设置了此项，会优先使用这个值）
+  # 留空则自动根据环境生成
+  base_url: ""
+
+# 存储路径配置
+storage:
+  # 数据库文件路径
+  db_path: ./data/app.db
+
+  # 产品数据库路径（如果需要）
+  product_db_path: ./data/product.db
+
+  # 资源文件存储路径
+  resource_path: ./static/cdn
+
+# 日志配置
+logging:
+  # 日志级别: debug | info | warn | error
+  level: info
+
+# 备份配置
+backup:
+  # 是否启用备份功能
+  enabled: true
+
+  # 本地备份路径
+  local_path: ./backups
+
+  # 本地备份保留天数
+  retention_days: 7
+
+  # 环境标识: dev | build
+  environment: dev
+
+  # 是否启用自动清理过期备份
+  # 建议生产环境设为false，防止误删重要备份
+  auto_cleanup: false
+
+# 腾讯云COS配置（可选，用于云端备份）
+cos:
+  # 是否启用COS云存储
+  enabled: false
+
+  # COS密钥ID（从腾讯云控制台获取）
+  secret_id: ""
+
+  # COS密钥Key（从腾讯云控制台获取）
+  secret_key: ""
+
+  # COS存储桶URL
+  bucket_url: ""
+
+  # COS区域
+  region: ap-shanghai
+
+# 其他配置
+misc:
+  # 最大上传文件大小（字节）
+  max_upload_size: 104857600 # 100MB
+
+  # 会话过期时间（秒）
+  session_timeout: 86400 # 24小时
+
+# ===========================================
+# 环境变量覆盖说明
+# ===========================================
+# 以上所有配置都可以通过环境变量覆盖，变量名规则：
+# - app.env -> APP_ENV
+# - network.local.ip -> LOCAL_IP
+# - backup.enabled -> BACKUP_ENABLED
+# - cos.secret_id -> COS_SECRET_ID
+# 等等...
+#
+# 优先级: 环境变量 > YAML配置文件 > 默认值
