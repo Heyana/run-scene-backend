@@ -411,21 +411,58 @@ func (s *SyncService) processTextureWithThumbnail(assetID string, thumbnailURL s
 	return nil
 }
 
-// fetchTextureList 获取材质列表
+// fetchTextureList 获取材质列表（带重试）
 func (s *SyncService) fetchTextureList() (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/assets?type=textures", config.AppConfig.Texture.APIBaseURL)
-	resp, err := s.httpClient.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+	
+	var lastErr error
+	maxRetries := config.AppConfig.Texture.RetryTimes
+	if maxRetries <= 0 {
+		maxRetries = 3
 	}
 
-	return result, nil
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			waitTime := time.Duration(i) * 2 * time.Second
+			s.logInfo("重试获取材质列表 (%d/%d)，等待 %v...", i+1, maxRetries, waitTime)
+			time.Sleep(waitTime)
+		}
+
+		resp, err := s.httpClient.Get(url)
+		if err != nil {
+			lastErr = fmt.Errorf("请求失败: %w", err)
+			s.logWarn("获取材质列表失败 (尝试 %d/%d): %v", i+1, maxRetries, err)
+			continue
+		}
+
+		// 读取响应体
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		if err != nil {
+			lastErr = fmt.Errorf("读取响应失败: %w", err)
+			s.logWarn("读取响应失败 (尝试 %d/%d): %v", i+1, maxRetries, err)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			lastErr = fmt.Errorf("API返回错误状态 %d: %s", resp.StatusCode, string(body))
+			s.logWarn("API返回错误 (尝试 %d/%d): %v", i+1, maxRetries, lastErr)
+			continue
+		}
+
+		var result map[string]interface{}
+		if err := json.Unmarshal(body, &result); err != nil {
+			lastErr = fmt.Errorf("解析JSON失败: %w", err)
+			s.logWarn("解析JSON失败 (尝试 %d/%d): %v", i+1, maxRetries, err)
+			continue
+		}
+
+		// 成功
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("获取材质列表失败，已重试 %d 次: %w", maxRetries, lastErr)
 }
 
 // fetchTextureDetail 获取材质详情
@@ -591,6 +628,12 @@ func (s *SyncService) updateSyncLogError(logID uint, errorMsg string) {
 func (s *SyncService) logInfo(format string, args ...interface{}) {
 	if config.AppConfig.Texture.LogEnabled {
 		s.logger.Infof(format, args...)
+	}
+}
+
+func (s *SyncService) logWarn(format string, args ...interface{}) {
+	if config.AppConfig.Texture.LogEnabled {
+		s.logger.Warnf(format, args...)
 	}
 }
 

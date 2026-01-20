@@ -2,7 +2,6 @@ import { defineComponent, onMounted, ref } from "vue";
 import { useTextureStore } from "@/stores/texture";
 import {
   Card,
-  Table,
   Button,
   Space,
   Input,
@@ -14,12 +13,17 @@ import {
   Col,
   Image,
   Select,
+  Pagination,
+  Empty,
 } from "ant-design-vue";
 import {
   ReloadOutlined,
   SearchOutlined,
   SyncOutlined,
   PictureOutlined,
+  ClockCircleOutlined,
+  EyeOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons-vue";
 import type { TextureFile } from "@/api/models/texture";
 
@@ -55,7 +59,7 @@ export default defineComponent({
       return "";
     };
 
-    // 获取所有图片 URL
+    // 获取所有图片 URL（用于预览组）
     const getAllImageUrls = (files?: TextureFile[]) => {
       if (!files || files.length === 0) return [];
 
@@ -65,6 +69,27 @@ export default defineComponent({
         )
         .map((f) => f.full_url)
         .filter((url) => url);
+    };
+
+    // 获取其他文件（排除缩略图）
+    const getOtherFiles = (files?: TextureFile[]) => {
+      if (!files || files.length === 0) return [];
+
+      return files.filter((f: TextureFile) => {
+        if (f.file_type === "thumbnail") return false;
+        return ["jpg", "jpeg", "png", "webp"].includes(f.format?.toLowerCase());
+      });
+    };
+
+    // 获取状态配置
+    const getStatusConfig = (status: number) => {
+      const statusMap: Record<number, { color: string; text: string }> = {
+        0: { color: "default", text: "未同步" },
+        1: { color: "processing", text: "同步中" },
+        2: { color: "success", text: "已同步" },
+        3: { color: "error", text: "失败" },
+      };
+      return statusMap[status] ?? statusMap[0]!;
     };
 
     const columns = [
