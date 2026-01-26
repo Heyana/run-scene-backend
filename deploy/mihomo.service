@@ -1,0 +1,21 @@
+[Unit]
+Description=Mihomo Proxy Service
+Documentation=https://github.com/MetaCubeX/mihomo
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=LiLeng
+WorkingDirectory=/vol1/1003/app
+ExecStart=/vol1/1003/app/mihomo -d /vol1/1003/app/mihomo-config
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+
+# 日志配置
+StandardOutput=append:/vol1/1003/app/mihomo.log
+StandardError=append:/vol1/1003/app/mihomo.log
+
+[Install]
+WantedBy=multi-user.target

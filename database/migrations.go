@@ -96,6 +96,29 @@ func runVersionedUpgrades(db *gorm.DB) error {
 		logger.Log.Info("版本 2 升级完成")
 	}
 
+	// 版本 3: 改进 AmbientCG 贴图类型提取（2026-01-26）
+	if lastVersion < 3 && targetVersion >= 3 {
+		logger.Log.Info("执行版本 3 升级: 改进 AmbientCG 贴图类型提取...")
+		
+		// 强制重新分析所有文件的贴图类型（使用新的 AmbientCG 提取逻辑）
+		if err := analyzeTextureTypes(db); err != nil {
+			logger.Log.Errorf("分析贴图类型失败: %v", err)
+		}
+
+		// 强制重新更新所有材质的贴图类型列表
+		if err := updateTextureTypesList(db); err != nil {
+			logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
+		}
+
+		// 记录贴图类型分析结果到日志
+		if err := logTextureTypeAnalysis(db); err != nil {
+			logger.Log.Errorf("记录贴图类型分析失败: %v", err)
+		}
+
+		saveLastExecutedVersion(3)
+		logger.Log.Info("版本 3 升级完成")
+	}
+
 	return nil
 }
 

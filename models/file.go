@@ -72,10 +72,24 @@ func (f *File) AfterFind(tx *gorm.DB) error {
 }
 
 // ExtractTextureType 从文件名提取贴图类型
+// 支持 PolyHaven 和 AmbientCG 两种命名格式
+// PolyHaven: "nor_dx_2k.jpg" -> "nor_dx", "Diffuse_2k.jpg" -> "Diffuse"
+// AmbientCG: "Metal058B_2K-JPG_Color.jpg" -> "Color", "Sticker001_2K-JPG_NormalGL.jpg" -> "NormalGL"
+func ExtractTextureType(fileName string) string {
+	// 检测是否是 AmbientCG 格式（包含 _2K-JPG_ 或类似模式）
+	if strings.Contains(fileName, "K-JPG_") || strings.Contains(fileName, "K-PNG_") {
+		return ExtractTextureTypeFromAmbientCG(fileName)
+	}
+	
+	// PolyHaven 格式
+	return ExtractTextureTypeFromPolyHaven(fileName)
+}
+
+// ExtractTextureTypeFromPolyHaven 从 PolyHaven 文件名提取贴图类型
 // 例如: "nor_dx_2k.jpg" -> "nor_dx"
 //      "Diffuse_2k.jpg" -> "Diffuse"
 //      "Rough_4k.jpg" -> "Rough"
-func ExtractTextureType(fileName string) string {
+func ExtractTextureTypeFromPolyHaven(fileName string) string {
 	// 移除扩展名
 	name := fileName
 	if idx := strings.LastIndex(name, "."); idx != -1 {
@@ -107,5 +121,34 @@ func ExtractTextureType(fileName string) string {
 		}
 	}
 	
+	return name
+}
+
+// ExtractTextureTypeFromAmbientCG 从 AmbientCG 文件名提取贴图类型
+// 例如: "Metal058B_2K-JPG_Color.jpg" -> "Color"
+//      "Sticker001_2K-JPG_NormalGL.jpg" -> "NormalGL"
+//      "Wood008_2K-JPG_Roughness.jpg" -> "Roughness"
+func ExtractTextureTypeFromAmbientCG(fileName string) string {
+	// AmbientCG 的命名格式: AssetID_Resolution-Format_Type.ext
+	// 例如: Metal058B_2K-JPG_Color.jpg
+	
+	// 移除扩展名
+	name := fileName
+	if idx := strings.LastIndex(name, "."); idx != -1 {
+		name = name[:idx]
+	}
+	
+	// 查找最后一个下划线，后面就是类型
+	// Metal058B_2K-JPG_Color -> Color
+	if idx := strings.LastIndex(name, "_"); idx != -1 {
+		textureType := name[idx+1:]
+		
+		// 如果类型不为空且不包含分辨率信息，返回
+		if textureType != "" && !strings.Contains(textureType, "K-") {
+			return textureType
+		}
+	}
+	
+	// 如果没有下划线或格式不对，返回整个文件名（去掉扩展名）
 	return name
 }

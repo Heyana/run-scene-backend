@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -199,4 +200,33 @@ func getInt64(m map[string]interface{}, key string) int64 {
 		return int64(v)
 	}
 	return 0
+}
+
+// ExtractTextureTypeFromAmbientCG 从 AmbientCG 文件名提取贴图类型
+// 例如: "Metal058B_2K-JPG_Color.jpg" -> "Color"
+//      "Sticker001_2K-JPG_NormalGL.jpg" -> "NormalGL"
+//      "Wood008_2K-JPG_Roughness.jpg" -> "Roughness"
+func ExtractTextureTypeFromAmbientCG(fileName string) string {
+	// AmbientCG 的命名格式: AssetID_Resolution-Format_Type.ext
+	// 例如: Metal058B_2K-JPG_Color.jpg
+	
+	// 移除扩展名
+	name := fileName
+	if idx := strings.LastIndex(name, "."); idx != -1 {
+		name = name[:idx]
+	}
+	
+	// 查找最后一个下划线，后面就是类型
+	// Metal058B_2K-JPG_Color -> Color
+	if idx := strings.LastIndex(name, "_"); idx != -1 {
+		textureType := name[idx+1:]
+		
+		// 如果类型不为空且不包含分辨率信息，返回
+		if textureType != "" && !strings.Contains(textureType, "K-") {
+			return textureType
+		}
+	}
+	
+	// 如果没有下划线或格式不对，返回整个文件名（去掉扩展名）
+	return name
 }

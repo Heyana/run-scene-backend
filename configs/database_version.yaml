@@ -3,7 +3,7 @@
 
 # 当前数据库版本
 # 修改此值会触发从当前版本到目标版本之间的所有升级任务
-version: 2
+version: 3
 
 # 版本历史记录
 history:
@@ -29,8 +29,19 @@ history:
       files: 5716
       textures: 2692
 
+  - version: 3
+    date: "2026-01-26"
+    description: "改进 AmbientCG 贴图类型提取"
+    tasks:
+      - "修复 AmbientCG 文件名解析逻辑"
+      - "正确提取 Color、NormalGL、Roughness 等类型"
+      - "重新分析所有 AmbientCG 贴图"
+    affected:
+      files: 5716
+      textures: 2692
+
 # 说明
 # 1. 修改 version 值会触发升级
 # 2. 系统会记住上次执行的版本号（存储在 data/.db_version 文件中）
-# 3. 只会执行从上次版本到当前版本之间的升级任务
+# 3. 只会执行从上次版本到当前版本之间的所有升级任务
 # 4. 如果需要重新执行某个版本的升级，删除 data/.db_version 文件或修改其内容
