@@ -311,32 +311,8 @@ func (s *AmbientCGDownloadService) parseAndSaveFiles(textureID uint, assetID, ex
 
 // parseTextureType 从文件名解析贴图类型
 func (s *AmbientCGDownloadService) parseTextureType(fileName string) string {
-	fileName = strings.ToLower(fileName)
-
-	// AmbientCG 文件命名规则: Ground103_2K-JPG_Color.jpg
-	if strings.Contains(fileName, "_color") || strings.Contains(fileName, "_diffuse") {
-		return "Diffuse"
-	}
-	if strings.Contains(fileName, "_normaldx") {
-		return "nor_dx"
-	}
-	if strings.Contains(fileName, "_normalgl") {
-		return "nor_gl"
-	}
-	if strings.Contains(fileName, "_roughness") {
-		return "Rough"
-	}
-	if strings.Contains(fileName, "_displacement") {
-		return "Displacement"
-	}
-	if strings.Contains(fileName, "_ambientocclusion") || strings.Contains(fileName, "_ao") {
-		return "AO"
-	}
-	if strings.Contains(fileName, "_metalness") || strings.Contains(fileName, "_metal") {
-		return "Metal"
-	}
-
-	return "other"
+	// 使用统一的贴图类型提取函数
+	return models.ExtractTextureType(fileName)
 }
 
 // getExistingFiles 获取已存在的文件

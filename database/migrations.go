@@ -119,6 +119,42 @@ func runVersionedUpgrades(db *gorm.DB) error {
 		logger.Log.Info("版本 3 升级完成")
 	}
 
+	// 版本 4: 清理丢失的文件记录（2026-01-26）
+	if lastVersion < 4 && targetVersion >= 4 {
+		logger.Log.Info("执行版本 4 升级: 清理丢失的文件记录...")
+		
+		// 检查并删除物理文件不存在的记录
+		if err := cleanMissingFiles(db); err != nil {
+			logger.Log.Errorf("清理丢失文件失败: %v", err)
+		}
+
+		// 更新材质同步状态
+		if err := updateTextureSyncStatus(db); err != nil {
+			logger.Log.Errorf("更新材质同步状态失败: %v", err)
+		}
+
+		saveLastExecutedVersion(4)
+		logger.Log.Info("版本 4 升级完成")
+	}
+
+	// 版本 5: 修复贴图类型解析（2026-01-26）
+	if lastVersion < 5 && targetVersion >= 5 {
+		logger.Log.Info("执行版本 5 升级: 修复贴图类型解析...")
+		
+		// 重新分析所有文件的贴图类型（使用统一的解析函数）
+		if err := analyzeTextureTypes(db); err != nil {
+			logger.Log.Errorf("分析贴图类型失败: %v", err)
+		}
+
+		// 重新更新所有材质的贴图类型列表
+		if err := updateTextureTypesList(db); err != nil {
+			logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
+		}
+
+		saveLastExecutedVersion(5)
+		logger.Log.Info("版本 5 升级完成")
+	}
+
 	return nil
 }
 
@@ -661,4 +697,245 @@ func logTextureTypeAnalysis(db *gorm.DB) error {
 	logger.Log.Info("========================================")
 	
 	return nil
+}
+
+// cleanMissingFiles 清理物理文件不存在的数据库记录
+func cleanMissingFiles(db *gorm.DB) error {
+	logger.Log.Info("开始检查文件完整性...")
+
+	// 查询所有文件记录
+	var files []models.File
+	if err := db.Find(&files).Error; err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		logger.Log.Info("没有找到文件记录")
+		return nil
+	}
+
+	logger.Log.Infof("找到 %d 个文件记录，开始检查物理文件...", len(files))
+
+	deletedCount := 0
+	checkedCount := 0
+	batchSize := 100
+	affectedTextureIDs := make(map[uint]bool) // 记录受影响的材质 ID
+
+	for i := 0; i < len(files); i += batchSize {
+		end := i + batchSize
+		if end > len(files) {
+			end = len(files)
+		}
+
+		batch := files[i:end]
+
+		for _, file := range batch {
+			checkedCount++
+
+			// 跳过没有 local_path 的记录
+			if file.LocalPath == "" {
+				continue
+			}
+
+			// 检查物理文件是否存在
+			fileExists := checkFileExists(file.LocalPath)
+
+			if !fileExists {
+				// 文件不存在，删除数据库记录
+				logger.Log.Warnf("文件不存在，删除记录: %s (ID: %d)", file.LocalPath, file.ID)
+
+				// 记录受影响的材质 ID
+				if file.RelatedType == "Texture" && file.RelatedID > 0 {
+					affectedTextureIDs[file.RelatedID] = true
+				}
+
+				// 删除文件记录
+				if err := db.Delete(&file).Error; err != nil {
+					logger.Log.Errorf("删除文件记录失败 (ID: %d): %v", file.ID, err)
+					continue
+				}
+
+				deletedCount++
+			}
+
+			// 每处理 100 个文件输出一次进度
+			if checkedCount%100 == 0 {
+				logger.Log.Infof("已检查 %d/%d 个文件，删除 %d 个丢失记录...", 
+					checkedCount, len(files), deletedCount)
+			}
+		}
+	}
+
+	logger.Log.Infof("文件完整性检查完成: 检查 %d 个，删除 %d 个丢失记录", 
+		checkedCount, deletedCount)
+
+	// 更新受影响材质的下载状态
+	if len(affectedTextureIDs) > 0 {
+		logger.Log.Infof("开始更新 %d 个受影响材质的下载状态...", len(affectedTextureIDs))
+		
+		updatedCount := 0
+		for textureID := range affectedTextureIDs {
+			// 查询该材质的文件数量
+			var thumbnailCount int64
+			var textureCount int64
+			
+			db.Model(&models.File{}).
+				Where("related_id = ? AND related_type = ? AND file_type = ?", textureID, "Texture", "thumbnail").
+				Count(&thumbnailCount)
+			
+			db.Model(&models.File{}).
+				Where("related_id = ? AND related_type = ? AND file_type = ?", textureID, "Texture", "texture").
+				Count(&textureCount)
+
+			// 更新材质状态
+			var texture models.Texture
+			if err := db.First(&texture, textureID).Error; err != nil {
+				logger.Log.Warnf("查询材质失败 (ID: %d): %v", textureID, err)
+				continue
+			}
+
+			// 计算新的状态
+			newDownloadCompleted := false
+			newSyncStatus := texture.SyncStatus
+
+			if thumbnailCount > 0 && textureCount > 0 {
+				// 有缩略图和贴图，已完全下载
+				newDownloadCompleted = true
+				newSyncStatus = 2
+			} else if thumbnailCount > 0 {
+				// 只有缩略图，元数据已同步，等待按需下载
+				newDownloadCompleted = false
+				newSyncStatus = 2
+			} else {
+				// 没有文件，未同步
+				newDownloadCompleted = false
+				newSyncStatus = 0
+			}
+
+			// 如果状态有变化，更新数据库
+			if newDownloadCompleted != texture.DownloadCompleted || newSyncStatus != texture.SyncStatus {
+				if err := db.Model(&texture).Updates(map[string]interface{}{
+					"download_completed": newDownloadCompleted,
+					"sync_status":        newSyncStatus,
+				}).Error; err != nil {
+					logger.Log.Warnf("更新材质状态失败 (ID: %d): %v", textureID, err)
+				} else {
+					updatedCount++
+					logger.Log.Infof("更新材质状态: ID=%d, download_completed=%v, sync_status=%d", 
+						textureID, newDownloadCompleted, newSyncStatus)
+				}
+			}
+		}
+
+		logger.Log.Infof("成功更新 %d 个材质的下载状态", updatedCount)
+	}
+
+	return nil
+}
+
+// checkFileExists 检查文件是否存在（支持多种路径格式）
+func checkFileExists(localPath string) bool {
+	// 从配置获取 NAS 路径
+	nasPath := ""
+	if config.AppConfig != nil && config.AppConfig.Texture.NASEnabled {
+		nasPath = config.AppConfig.Texture.NASPath
+	}
+
+	// 尝试多种路径格式
+	paths := []string{}
+
+	// 1. 原始路径
+	paths = append(paths, localPath)
+
+	// 2. 如果配置了 NAS 路径，使用 NAS 路径
+	if nasPath != "" {
+		// local_path 格式: static\textures\xxx\yyy.jpg
+		// 需要提取 textures 后面的部分
+		relativePath := extractRelativePath(localPath)
+		if relativePath != "" {
+			// 拼接 NAS 路径
+			fullNASPath := joinPath(nasPath, relativePath)
+			paths = append(paths, fullNASPath)
+		}
+	}
+
+	// 3. 尝试当前目录的相对路径
+	paths = append(paths, convertToUnixPath(localPath))
+
+	// 检查所有可能的路径
+	for _, p := range paths {
+		if fileExistsAtPath(p) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// extractRelativePath 从 local_path 提取相对路径
+// 例如: static\textures\xxx\yyy.jpg -> xxx/yyy.jpg
+//      static/textures/xxx/yyy.jpg -> xxx/yyy.jpg
+func extractRelativePath(localPath string) string {
+	// 统一转换为 Unix 格式
+	path := convertToUnixPath(localPath)
+
+	// 查找 textures/ 的位置
+	texturesIndex := -1
+	searchStr := "textures/"
+	for i := 0; i <= len(path)-len(searchStr); i++ {
+		if path[i:i+len(searchStr)] == searchStr {
+			texturesIndex = i + len(searchStr)
+			break
+		}
+	}
+
+	if texturesIndex > 0 && texturesIndex < len(path) {
+		return path[texturesIndex:]
+	}
+
+	return ""
+}
+
+// joinPath 拼接路径
+func joinPath(basePath, relativePath string) string {
+	// 统一转换为 Unix 格式
+	base := convertToUnixPath(basePath)
+	rel := convertToUnixPath(relativePath)
+
+	// 移除 base 末尾的斜杠
+	if len(base) > 0 && base[len(base)-1] == '/' {
+		base = base[:len(base)-1]
+	}
+
+	// 移除 rel 开头的斜杠
+	if len(rel) > 0 && rel[0] == '/' {
+		rel = rel[1:]
+	}
+
+	return base + "/" + rel
+}
+
+// fileExistsAtPath 检查指定路径的文件是否存在
+func fileExistsAtPath(path string) bool {
+	if path == "" {
+		return false
+	}
+
+	// 使用 os.Stat 检查文件
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// convertToUnixPath 转换为 Unix 路径格式
+func convertToUnixPath(path string) string {
+	// 替换反斜杠为正斜杠
+	result := ""
+	for _, ch := range path {
+		if ch == '\\' {
+			result += "/"
+		} else {
+			result += string(ch)
+		}
+	}
+	return result
 }
