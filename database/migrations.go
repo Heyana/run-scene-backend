@@ -2,8 +2,11 @@
 package database
 
 import (
+	"go_wails_project_manager/config"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/models"
+	"os"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -12,42 +15,144 @@ import (
 func RunOnceUpgrade(db *gorm.DB) error {
 	logger.Log.Info("开始执行一次性升级任务...")
 
-	// 1. 删除 cdn_path 为空的文件记录及其关联
-	if err := cleanEmptyCDNPathFiles(db); err != nil {
-		logger.Log.Errorf("清理空 CDN 路径失败: %v", err)
-	}
-
-	// 2. 更新 cdn_path 为相对路径（移除 base_url 前缀）
-	if err := updateCDNPathToRelative(db); err != nil {
-		logger.Log.Errorf("更新 CDN 路径失败: %v", err)
-	}
-
-	// 3. 删除重复的文件记录（保留最新的）
-	if err := cleanDuplicateFiles(db); err != nil {
-		logger.Log.Errorf("清理重复文件失败: %v", err)
-	}
-
-	// 4. 更新材质同步状态（根据文件下载情况）
-	if err := updateTextureSyncStatus(db); err != nil {
-		logger.Log.Errorf("更新材质同步状态失败: %v", err)
-	}
-
-	// 5. 分析并更新文件的贴图类型
-	if err := analyzeTextureTypes(db); err != nil {
-		logger.Log.Errorf("分析贴图类型失败: %v", err)
-	}
-
-	// 6. 更新材质的贴图类型列表
-	if err := updateTextureTypesList(db); err != nil {
-		logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
-	}
-
-	// 7. 修复 CDN 路径中的 textures/textures/ 重复问题
-	if err := fixDuplicateTexturesInCDNPath(db); err != nil {
-		logger.Log.Errorf("修复 CDN 路径失败: %v", err)
+	// 检查并执行版本化升级
+	if err := runVersionedUpgrades(db); err != nil {
+		logger.Log.Errorf("执行版本化升级失败: %v", err)
 	}
 
 	logger.Log.Info("所有升级任务执行完成")
+	return nil
+}
+
+// runVersionedUpgrades 执行版本化的升级任务
+func runVersionedUpgrades(db *gorm.DB) error {
+	// 读取配置文件中的目标版本
+	targetVersion := getTargetVersionFromConfig()
+	logger.Log.Infof("配置文件目标版本: %d", targetVersion)
+	
+	// 获取上次执行的版本（从文件读取）
+	lastVersion := getLastExecutedVersion()
+	logger.Log.Infof("上次执行版本: %d", lastVersion)
+
+	// 如果已经是最新版本，跳过
+	if lastVersion >= targetVersion {
+		logger.Log.Info("数据库已是最新版本，跳过升级")
+		return nil
+	}
+
+	// 版本 1: 基础清理和修复
+	if lastVersion < 1 && targetVersion >= 1 {
+		logger.Log.Info("执行版本 1 升级...")
+		
+		// 1. 删除 cdn_path 为空的文件记录及其关联
+		if err := cleanEmptyCDNPathFiles(db); err != nil {
+			logger.Log.Errorf("清理空 CDN 路径失败: %v", err)
+		}
+
+		// 2. 更新 cdn_path 为相对路径（移除 base_url 前缀）
+		if err := updateCDNPathToRelative(db); err != nil {
+			logger.Log.Errorf("更新 CDN 路径失败: %v", err)
+		}
+
+		// 3. 删除重复的文件记录（保留最新的）
+		if err := cleanDuplicateFiles(db); err != nil {
+			logger.Log.Errorf("清理重复文件失败: %v", err)
+		}
+
+		// 4. 更新材质同步状态（根据文件下载情况）
+		if err := updateTextureSyncStatus(db); err != nil {
+			logger.Log.Errorf("更新材质同步状态失败: %v", err)
+		}
+
+		// 5. 修复 CDN 路径中的 textures/textures/ 重复问题
+		if err := fixDuplicateTexturesInCDNPath(db); err != nil {
+			logger.Log.Errorf("修复 CDN 路径失败: %v", err)
+		}
+
+		saveLastExecutedVersion(1)
+		logger.Log.Info("版本 1 升级完成")
+	}
+
+	// 版本 2: 贴图类型分析和映射（2026-01-26）
+	if lastVersion < 2 && targetVersion >= 2 {
+		logger.Log.Info("执行版本 2 升级: 重新分析所有贴图类型...")
+		
+		// 强制重新分析所有文件的贴图类型
+		if err := analyzeTextureTypes(db); err != nil {
+			logger.Log.Errorf("分析贴图类型失败: %v", err)
+		}
+
+		// 强制重新更新所有材质的贴图类型列表
+		if err := updateTextureTypesList(db); err != nil {
+			logger.Log.Errorf("更新材质贴图类型列表失败: %v", err)
+		}
+
+		// 记录贴图类型分析结果到日志
+		if err := logTextureTypeAnalysis(db); err != nil {
+			logger.Log.Errorf("记录贴图类型分析失败: %v", err)
+		}
+
+		saveLastExecutedVersion(2)
+		logger.Log.Info("版本 2 升级完成")
+	}
+
+	return nil
+}
+
+// getTargetVersionFromConfig 从配置文件读取目标版本
+func getTargetVersionFromConfig() int {
+	if config.DatabaseVersion == nil {
+		logger.Log.Warn("数据库版本配置未加载，使用默认版本 0")
+		return 0
+	}
+	return config.DatabaseVersion.GetTargetVersion()
+}
+
+// getLastExecutedVersion 获取上次执行的版本（从文件读取）
+func getLastExecutedVersion() int {
+	data, err := os.ReadFile("data/.db_version")
+	if err != nil {
+		// 文件不存在，返回 0
+		return 0
+	}
+
+	versionStr := strings.TrimSpace(string(data))
+	version := 0
+	for _, c := range versionStr {
+		if c >= '0' && c <= '9' {
+			version = version*10 + int(c-'0')
+		}
+	}
+	return version
+}
+
+// saveLastExecutedVersion 保存已执行的版本号到文件
+func saveLastExecutedVersion(version int) error {
+	// 确保 data 目录存在
+	os.MkdirAll("data", 0755)
+
+	// 将版本号转换为字符串
+	versionStr := ""
+	if version == 0 {
+		versionStr = "0"
+	} else {
+		temp := version
+		digits := []rune{}
+		for temp > 0 {
+			digits = append([]rune{rune('0' + temp%10)}, digits...)
+			temp /= 10
+		}
+		versionStr = string(digits)
+	}
+
+	// 写入文件
+	err := os.WriteFile("data/.db_version", []byte(versionStr), 0644)
+	if err != nil {
+		logger.Log.Errorf("保存版本号失败: %v", err)
+		return err
+	}
+
+	logger.Log.Infof("已保存版本号: %d", version)
 	return nil
 }
 
@@ -342,8 +447,8 @@ func analyzeTextureTypes(db *gorm.DB) error {
 		// 提取贴图类型
 		textureType := models.ExtractTextureType(file.FileName)
 		
-		// 如果提取到了类型且与当前不同，则更新
-		if textureType != "" && textureType != file.TextureType {
+		// 强制更新所有文件的 texture_type（使用最新规则）
+		if textureType != "" {
 			if err := db.Model(&file).Update("texture_type", textureType).Error; err != nil {
 				logger.Log.Warnf("更新文件贴图类型失败 (id=%d): %v", file.ID, err)
 				continue
@@ -370,18 +475,18 @@ func analyzeTextureTypes(db *gorm.DB) error {
 func updateTextureTypesList(db *gorm.DB) error {
 	logger.Log.Info("开始更新材质的贴图类型列表...")
 
-	// 只查询 texture_types 为空的材质
+	// 查询所有材质（强制重新更新）
 	var textures []models.Texture
-	if err := db.Where("texture_types IS NULL OR texture_types = ''").Find(&textures).Error; err != nil {
+	if err := db.Find(&textures).Error; err != nil {
 		return err
 	}
 
 	if len(textures) == 0 {
-		logger.Log.Info("所有材质的贴图类型列表已是最新")
+		logger.Log.Info("没有找到材质记录")
 		return nil
 	}
 
-	logger.Log.Infof("找到 %d 个需要更新的材质...", len(textures))
+	logger.Log.Infof("找到 %d 个材质，开始更新贴图类型列表...", len(textures))
 
 	updatedCount := 0
 	batchSize := 100
@@ -406,17 +511,21 @@ func updateTextureTypesList(db *gorm.DB) error {
 				continue
 			}
 
+			// 构建新的 texture_types 字符串
+			var textureTypesStr string
 			if len(textureTypes) > 0 {
-				textureTypesStr := joinStrings(textureTypes, ",")
-				
-				// 更新材质的 texture_types 字段
-				if err := db.Model(&texture).Update("texture_types", textureTypesStr).Error; err != nil {
-					logger.Log.Warnf("更新材质贴图类型列表失败 (id=%d): %v", texture.ID, err)
-					continue
-				}
-				
-				updatedCount++
+				textureTypesStr = joinStrings(textureTypes, ",")
+			} else {
+				textureTypesStr = "" // 没有贴图文件的材质设为空
 			}
+			
+			// 强制更新材质的 texture_types 字段
+			if err := db.Model(&texture).Update("texture_types", textureTypesStr).Error; err != nil {
+				logger.Log.Warnf("更新材质贴图类型列表失败 (id=%d): %v", texture.ID, err)
+				continue
+			}
+			
+			updatedCount++
 		}
 		
 		if (i+batchSize) < len(textures) {
@@ -476,5 +585,57 @@ func fixDuplicateTexturesInCDNPath(db *gorm.DB) error {
 	}
 
 	logger.Log.Infof("成功修复 %d 个文件的 CDN 路径", fixedCount)
+	return nil
+}
+
+// logTextureTypeAnalysis 记录贴图类型分析结果到日志
+func logTextureTypeAnalysis(db *gorm.DB) error {
+	logger.Log.Info("开始记录贴图类型分析...")
+
+	// 检查表是否存在
+	if !db.Migrator().HasTable(&models.File{}) || !db.Migrator().HasTable(&models.Texture{}) {
+		logger.Log.Info("相关表不存在，跳过贴图类型分析")
+		return nil
+	}
+
+	analysis, err := AnalyzeAllTextureTypes(db)
+	if err != nil {
+		return err
+	}
+
+	if len(analysis) == 0 {
+		logger.Log.Info("暂无贴图数据可分析")
+		return nil
+	}
+
+	logger.Log.Info("========== 贴图类型分析报告 ==========")
+	logger.Log.Infof("共发现 %d 种贴图类型", len(analysis))
+	
+	// 按数据源分组
+	polyhavenTypes := 0
+	ambientcgTypes := 0
+	
+	logger.Log.Info("\n--- PolyHaven 数据源 ---")
+	for _, item := range analysis {
+		if item.Source == "polyhaven" {
+			polyhavenTypes++
+			logger.Log.Infof("  %s: %d 个文件 → 建议类型: %s", 
+				item.OriginalType, item.Count, item.SuggestedType)
+		}
+	}
+	
+	logger.Log.Info("\n--- AmbientCG 数据源 ---")
+	for _, item := range analysis {
+		if item.Source == "ambientcg" {
+			ambientcgTypes++
+			logger.Log.Infof("  %s: %d 个文件 → 建议类型: %s", 
+				item.OriginalType, item.Count, item.SuggestedType)
+		}
+	}
+	
+	logger.Log.Infof("\nPolyHaven: %d 种类型, AmbientCG: %d 种类型", 
+		polyhavenTypes, ambientcgTypes)
+	logger.Log.Info("========================================")
+	
 	return nil
 }

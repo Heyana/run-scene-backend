@@ -29,12 +29,20 @@ export default defineComponent({
             </div>
 
             <Card title="快速导航" size="small">
-              <Space size="middle">
+              <Space size="middle" wrap>
                 <RouterLink to="/textures">
                   <Button type="primary" size="large">
                     {{
                       icon: () => <PictureOutlined />,
                       default: () => "浏览材质库",
+                    }}
+                  </Button>
+                </RouterLink>
+                <RouterLink to="/texture-analysis">
+                  <Button type="default" size="large">
+                    {{
+                      icon: () => <PictureOutlined />,
+                      default: () => "贴图类型分析",
                     }}
                   </Button>
                 </RouterLink>

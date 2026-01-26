@@ -38,6 +38,13 @@ func NewAppCore() (*AppCore, error) {
 		logger.Log.Info("贴图映射配置加载成功")
 	}
 
+	// 加载数据库版本配置
+	if err := config.LoadDatabaseVersionConfig("configs/database_version.yaml"); err != nil {
+		logger.Log.Warnf("加载数据库版本配置失败: %v，将使用默认版本", err)
+	} else {
+		logger.Log.Infof("数据库版本配置加载成功，目标版本: %d", config.DatabaseVersion.GetTargetVersion())
+	}
+
 	// 初始化日志
 	logger.Init()
 	log := logger.GetLogger()

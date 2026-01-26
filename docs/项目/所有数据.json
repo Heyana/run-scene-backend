@@ -1,0 +1,1483 @@
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "analysis": [
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Diffuse",
+        "count": 723,
+        "source": "polyhaven",
+        "examples": [
+          "Diffuse_2k.jpg",
+          "Diffuse_2k.jpg",
+          "Diffuse_2k.jpg",
+          "Diffuse_2k.jpg",
+          "Diffuse_2k.jpg"
+        ],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "PavingStones014",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_AmbientOcclusion",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_AmbientOcclusion.jpg"],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "Fingerprints004",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fingerprints004.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Sign007",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "SurfaceImperfections010_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["SurfaceImperfections010_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Mask",
+        "count": 13,
+        "source": "polyhaven",
+        "examples": [
+          "Mask_2k.jpg",
+          "Mask_2k.jpg",
+          "Mask_2k.jpg",
+          "Mask_2k.jpg",
+          "Mask_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Rock008_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Bump",
+        "count": 90,
+        "source": "polyhaven",
+        "examples": [
+          "Bump_2k.jpg",
+          "Bump_2k.jpg",
+          "Bump_2k.jpg",
+          "Bump_2k.jpg",
+          "Bump_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Grate002",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Wood008_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "spec",
+        "count": 103,
+        "source": "polyhaven",
+        "examples": [
+          "spec_2k.jpg",
+          "spec_2k.jpg",
+          "spec_2k.jpg",
+          "spec_2k.jpg",
+          "spec_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Rock008_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "col",
+        "count": 6,
+        "source": "polyhaven",
+        "examples": [
+          "col_1_2k.jpg",
+          "col_2_2k.jpg",
+          "col_03_2k.jpg",
+          "col_02_2k.jpg",
+          "col_03_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "me_arm",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["me_arm_2k.jpg"],
+        "suggested_type": "aoMap,roughnessMap,metalnessMap"
+      },
+      {
+        "original_type": "Metal024",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Smear005_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Smear005_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "coll1",
+        "count": 2,
+        "source": "polyhaven",
+        "examples": ["coll1_2k.jpg", "coll1_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fingerprints004_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fingerprints004_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_AmbientOcclusion",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_AmbientOcclusion.jpg"],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_AmbientOcclusion",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_AmbientOcclusion.jpg"],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "arm",
+        "count": 725,
+        "source": "polyhaven",
+        "examples": [
+          "arm_2k.jpg",
+          "arm_2k.jpg",
+          "arm_2k.jpg",
+          "arm_2k.jpg",
+          "arm_2k.jpg"
+        ],
+        "suggested_type": "aoMap,roughnessMap,metalnessMap"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fence008A",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "SurfaceImperfections010_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["SurfaceImperfections010_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "col1",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["col1_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Metal",
+        "count": 38,
+        "source": "polyhaven",
+        "examples": [
+          "Metal_2k.jpg",
+          "Metal_2k.jpg",
+          "Metal_2k.jpg",
+          "Metal_2k.jpg",
+          "Metal_2k.jpg"
+        ],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Concrete039",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fingerprints004_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fingerprints004_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal058B",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Rock008_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Displacement",
+        "count": 718,
+        "source": "polyhaven",
+        "examples": [
+          "Displacement_2k.jpg",
+          "Displacement_2k.jpg",
+          "Displacement_2k.jpg",
+          "Displacement_2k.jpg",
+          "Displacement_2k.jpg"
+        ],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "anisotropy_strength",
+        "count": 30,
+        "source": "polyhaven",
+        "examples": [
+          "anisotropy_strength_2k.jpg",
+          "anisotropy_strength_2k.jpg",
+          "anisotropy_strength_2k.jpg",
+          "anisotropy_strength_2k.jpg",
+          "anisotropy_strength_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "nor_dx",
+        "count": 726,
+        "source": "polyhaven",
+        "examples": [
+          "nor_dx_2k.jpg",
+          "nor_dx_2k.jpg",
+          "nor_dx_2k.jpg",
+          "nor_dx_2k.jpg",
+          "nor_dx_2k.jpg"
+        ],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Fingerprints004_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fingerprints004_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Scratches002_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Scratches002_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Scratches002_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Scratches002_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "MetalWalkway008",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Scratches002_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Scratches002_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "SurfaceImperfections010",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["SurfaceImperfections010.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "col2",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["col2_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "AO",
+        "count": 719,
+        "source": "polyhaven",
+        "examples": [
+          "AO_2k.jpg",
+          "AO_2k.jpg",
+          "AO_2k.jpg",
+          "AO_2k.jpg",
+          "AO_2k.jpg"
+        ],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Metal051A",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Rock008_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Scratches002",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Scratches002.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Rock008_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "anisotropy_rotation",
+        "count": 29,
+        "source": "polyhaven",
+        "examples": [
+          "anisotropy_rotation_2k.jpg",
+          "anisotropy_rotation_2k.jpg",
+          "anisotropy_rotation_2k.jpg",
+          "anisotropy_rotation_2k.jpg",
+          "anisotropy_rotation_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Wood008_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Wood008_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ref",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["ref_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Sign007_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sign007_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Smear005",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Smear005.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "rough_ao",
+        "count": 83,
+        "source": "polyhaven",
+        "examples": [
+          "rough_ao_2k.jpg",
+          "rough_ao_2k.jpg",
+          "rough_ao_2k.jpg",
+          "rough_ao_2k.jpg",
+          "rough_ao_2k.jpg"
+        ],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "Rough",
+        "count": 723,
+        "source": "polyhaven",
+        "examples": [
+          "Rough_2k.jpg",
+          "Rough_2k.jpg",
+          "Rough_2k.jpg",
+          "Rough_2k.jpg",
+          "Rough_2k.jpg"
+        ],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Fence008A_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fence008A_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Fingerprints004_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Fingerprints004_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "diff_png",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["diff_png_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "PaintedMetal018",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "spec_ior",
+        "count": 30,
+        "source": "polyhaven",
+        "examples": [
+          "spec_ior_2k.jpg",
+          "spec_ior_2k.jpg",
+          "spec_ior_2k.jpg",
+          "spec_ior_2k.jpg",
+          "spec_ior_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "translucent",
+        "count": 5,
+        "source": "polyhaven",
+        "examples": [
+          "translucent_2k.jpg",
+          "translucent_2k.jpg",
+          "translucent_2k.jpg",
+          "translucent_2k.jpg",
+          "translucent_2k.jpg"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Metal058B_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal058B_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Sticker001_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_AmbientOcclusion",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_AmbientOcclusion.jpg"],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "PaintedMetal018_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PaintedMetal018_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "normal_gl",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["normal_gl_2k.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "rough_diff",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["rough_diff_2k.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "MetalPlates016B",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "MetalWalkway004",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004.png"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Rock008",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Rock008.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Scratches002_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Scratches002_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "nor_gl",
+        "count": 725,
+        "source": "polyhaven",
+        "examples": [
+          "nor_gl_2k.jpg",
+          "nor_gl_2k.jpg",
+          "nor_gl_2k.jpg",
+          "nor_gl_2k.jpg",
+          "nor_gl_2k.jpg"
+        ],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament005_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament005_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Metal024_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal024_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "MetalPlates016B_2K-JPG_AmbientOcclusion",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalPlates016B_2K-JPG_AmbientOcclusion.jpg"],
+        "suggested_type": "aoMap"
+      },
+      {
+        "original_type": "Smear005_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Smear005_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Sticker001",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Sticker001.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Wood008_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "coll2",
+        "count": 2,
+        "source": "polyhaven",
+        "examples": ["coll2_2k.jpg", "coll2_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "normal_dx",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["normal_dx_2k.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "page",
+        "count": 1,
+        "source": "polyhaven",
+        "examples": ["page_2k.jpg"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "Metal051A_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Metal051A_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "Smear005_2K-JPG_NormalGL",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Smear005_2K-JPG_NormalGL.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Wood008",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "PavingStones014_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["PavingStones014_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Wood008_2K-JPG_Roughness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Wood008_2K-JPG_Roughness.jpg"],
+        "suggested_type": "roughnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_Metalness",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_Metalness.jpg"],
+        "suggested_type": "metalnessMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament009_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament009_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "Grate002_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Grate002_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ScatteredLeaves005",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ScatteredLeaves005.png"],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "SurfaceImperfections010_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["SurfaceImperfections010_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "thumbnail",
+        "count": 21,
+        "source": "ambientcg",
+        "examples": [
+          "thumbnail.png",
+          "thumbnail.png",
+          "thumbnail.png",
+          "thumbnail.png",
+          "thumbnail.png"
+        ],
+        "suggested_type": "unknown"
+      },
+      {
+        "original_type": "MetalWalkway008_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway008_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "Smear005_2K-JPG_Opacity",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Smear005_2K-JPG_Opacity.jpg"],
+        "suggested_type": "alphaMap"
+      },
+      {
+        "original_type": "SurfaceImperfections010_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["SurfaceImperfections010_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament003_2K-JPG_Displacement",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament003_2K-JPG_Displacement.jpg"],
+        "suggested_type": "displacementMap"
+      },
+      {
+        "original_type": "ChristmasTreeOrnament008_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["ChristmasTreeOrnament008_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "Concrete039_2K-JPG_Color",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["Concrete039_2K-JPG_Color.jpg"],
+        "suggested_type": "map"
+      },
+      {
+        "original_type": "MetalWalkway004_2K-JPG_NormalDX",
+        "count": 1,
+        "source": "ambientcg",
+        "examples": ["MetalWalkway004_2K-JPG_NormalDX.jpg"],
+        "suggested_type": "normalMap"
+      }
+    ],
+    "total": 195
+  },
+  "timestamp": 1769405617
+}

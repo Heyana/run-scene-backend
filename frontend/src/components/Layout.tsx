@@ -32,6 +32,11 @@ export default defineComponent({
         label: <RouterLink to="/textures">材质库</RouterLink>,
       },
       {
+        key: "/texture-analysis",
+        icon: () => <PictureOutlined />,
+        label: <RouterLink to="/texture-analysis">贴图类型分析</RouterLink>,
+      },
+      {
         key: "/about",
         icon: () => <InfoCircleOutlined />,
         label: <RouterLink to="/about">关于</RouterLink>,

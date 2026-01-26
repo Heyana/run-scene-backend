@@ -179,6 +179,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			textures.GET("", textureController.List)                                    // 获取贴图列表
 			textures.GET("/types", textureController.GetTextureTypes)                   // 获取所有贴图类型
 			textures.GET("/types/threejs", textureController.GetThreeJSTypes)           // 获取 Three.js 贴图类型
+			textures.GET("/analyze-types", textureController.AnalyzeTextureTypes)       // 分析所有贴图类型
 			textures.GET("/:assetId", textureController.GetDetail)                      // 获取贴图详情
 			textures.POST("/:assetId/use", textureController.RecordUse)                 // 记录使用次数
 			textures.POST("/sync", textureController.TriggerSync)                       // 触发同步

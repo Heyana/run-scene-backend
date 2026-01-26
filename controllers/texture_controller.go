@@ -481,3 +481,23 @@ func (c *TextureController) CheckDownloadStatus(ctx *gin.Context) {
 		"file_count":         len(files),
 	})
 }
+
+// AnalyzeTextureTypes 分析所有贴图类型
+// @Summary 分析所有贴图类型
+// @Description 分析两个网站的所有贴图类型，展示原始类型名称、数量、示例和建议的 Three.js 类型
+// @Tags Texture
+// @Success 200 {object} response.Response
+// @Router /api/textures/analyze-types [get]
+func (c *TextureController) AnalyzeTextureTypes(ctx *gin.Context) {
+	analysis, err := database.AnalyzeAllTextureTypes(c.db)
+	if err != nil {
+		logger.Log.Errorf("分析贴图类型失败: %v", err)
+		response.Error(ctx, http.StatusInternalServerError, "分析失败")
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"analysis": analysis,
+		"total":    len(analysis),
+	})
+}

@@ -155,3 +155,19 @@ export const getSyncLogs = (params?: { page?: number; pageSize?: number }) => {
 export const getTextureTypes = () => {
   return http.get<{ types: string[]; count: number }>("textures/types");
 };
+
+/**
+ * 分析所有贴图类型
+ */
+export const analyzeTextureTypes = () => {
+  return http.get<{
+    analysis: Array<{
+      original_type: string;
+      count: number;
+      source: string;
+      examples: string[];
+      suggested_type: string;
+    }>;
+    total: number;
+  }>("textures/analyze-types");
+};
