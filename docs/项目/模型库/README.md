@@ -56,6 +56,7 @@ os.MkdirAll("static/models", 0755)
 // 3. 初始化上传服务
 uploadService := NewModelUploadService(db, config)
 ```
+
 ### 上传模型
 
 ```bash

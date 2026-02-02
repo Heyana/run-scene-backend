@@ -159,6 +159,17 @@ type YAMLConfig struct {
 		LogToFile           bool   `yaml:"log_to_file"`
 		LogFilePath         string `yaml:"log_file_path"`
 	} `yaml:"texture"`
+
+	Model struct {
+		LocalStorageEnabled bool     `yaml:"local_storage_enabled"`
+		StorageDir          string   `yaml:"storage_dir"`
+		BaseURL             string   `yaml:"base_url"`
+		NASEnabled          bool     `yaml:"nas_enabled"`
+		NASPath             string   `yaml:"nas_path"`
+		MaxFileSize         int64    `yaml:"max_file_size"`
+		MaxThumbnailSize    int64    `yaml:"max_thumbnail_size"`
+		AllowedTypes        []string `yaml:"allowed_types"`
+	} `yaml:"model"`
 }
 
 // Config 应用程序配置结构
@@ -177,6 +188,7 @@ type Config struct {
 	PublicCDNPort int            // 公网CDN端口
 	Security      SecurityConfig // 安全配置
 	Texture       TextureConfig  // 贴图库配置
+	Model         ModelConfig    // 模型库配置
 }
 
 // TextureConfig 贴图库配置
@@ -212,6 +224,23 @@ type TextureConfig struct {
 	LogLevel            string
 	LogToFile           bool
 	LogFilePath         string
+}
+
+// ModelConfig 模型库配置
+type ModelConfig struct {
+	// 本地存储配置
+	LocalStorageEnabled bool     // 是否保存到本地
+	StorageDir          string   // 存储目录
+	BaseURL             string   // 网络访问地址
+	
+	// NAS存储配置
+	NASEnabled bool   // 是否启用NAS存储
+	NASPath    string // NAS SMB共享路径
+	
+	// 文件限制
+	MaxFileSize      int64    // 最大文件大小（字节）
+	MaxThumbnailSize int64    // 最大预览图大小（字节）
+	AllowedTypes     []string // 允许的文件类型
 }
 
 // AppConfig 全局配置实例
@@ -269,6 +298,16 @@ func LoadConfig() error {
 			LogLevel:            getEnvOrDefault("TEXTURE_LOG_LEVEL", yamlConfig.Texture.LogLevel),
 			LogToFile:           getEnvAsBoolOrDefault("TEXTURE_LOG_TO_FILE", yamlConfig.Texture.LogToFile),
 			LogFilePath:         getEnvOrDefault("TEXTURE_LOG_FILE_PATH", yamlConfig.Texture.LogFilePath),
+		},
+		Model: ModelConfig{
+			LocalStorageEnabled: getEnvAsBoolOrDefault("MODEL_LOCAL_STORAGE_ENABLED", yamlConfig.Model.LocalStorageEnabled),
+			StorageDir:          getEnvOrDefault("MODEL_STORAGE_DIR", yamlConfig.Model.StorageDir),
+			BaseURL:             getEnvOrDefault("MODEL_BASE_URL", yamlConfig.Model.BaseURL),
+			NASEnabled:          getEnvAsBoolOrDefault("MODEL_NAS_ENABLED", yamlConfig.Model.NASEnabled),
+			NASPath:             getEnvOrDefault("MODEL_NAS_PATH", yamlConfig.Model.NASPath),
+			MaxFileSize:         getEnvAsInt64OrDefault("MODEL_MAX_FILE_SIZE", yamlConfig.Model.MaxFileSize),
+			MaxThumbnailSize:    getEnvAsInt64OrDefault("MODEL_MAX_THUMBNAIL_SIZE", yamlConfig.Model.MaxThumbnailSize),
+			AllowedTypes:        yamlConfig.Model.AllowedTypes,
 		},
 	}
 
@@ -339,6 +378,7 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.COS.Region = "ap-shanghai"
 	defaultConfig.Misc.MaxUploadSize = 104857600 // 100MB
 	defaultConfig.Misc.SessionTimeout = 86400    // 24小时
+	
 	// 贴图库默认配置
 	defaultConfig.Texture.StorageDir = "static/textures"
 	defaultConfig.Texture.SyncInterval = "6h"
@@ -355,6 +395,16 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Texture.LogLevel = "info"
 	defaultConfig.Texture.LogToFile = true
 	defaultConfig.Texture.LogFilePath = "./logs/texture_sync.log"
+	
+	// 模型库默认配置
+	defaultConfig.Model.LocalStorageEnabled = true
+	defaultConfig.Model.StorageDir = "static/models"
+	defaultConfig.Model.BaseURL = ""
+	defaultConfig.Model.NASEnabled = false
+	defaultConfig.Model.NASPath = ""
+	defaultConfig.Model.MaxFileSize = 104857600   // 100MB
+	defaultConfig.Model.MaxThumbnailSize = 5242880 // 5MB
+	defaultConfig.Model.AllowedTypes = []string{"glb", "glt"}
 
 	// 尝试读取YAML配置文件
 	configFile := "config.yaml"
@@ -418,6 +468,10 @@ func loadYAMLConfig() *YAMLConfig {
 				if yamlConfig.Texture.StorageDir != "" {
 					defaultConfig.Texture = yamlConfig.Texture
 				}
+				// 模型库配置
+				if yamlConfig.Model.StorageDir != "" {
+					defaultConfig.Model = yamlConfig.Model
+				}
 			}
 		}
 	}
@@ -447,6 +501,16 @@ func getEnvOrDefault(key, defaultValue string) string {
 func getEnvAsIntOrDefault(key string, defaultValue int) int {
 	if value, exists := os.LookupEnv(key); exists {
 		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// getEnvAsInt64OrDefault 获取环境变量并转换为int64，如果不存在或转换失败则返回默认值
+func getEnvAsInt64OrDefault(key string, defaultValue int64) int64 {
+	if value, exists := os.LookupEnv(key); exists {
+		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/controllers"
+	"go_wails_project_manager/database"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/middleware"
 	"go_wails_project_manager/response"
@@ -38,6 +39,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	backupController := controllers.NewBackupController()
 	securityController := controllers.NewSecurityController()
 	textureController := controllers.NewTextureController()
+	modelController := controllers.NewModelController(database.MustGetDB())
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -144,6 +146,60 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		c.File(fullPath)
 	})
 
+	// 模型文件静态服务
+	// 如果启用了 NAS，使用 NAS 路径；否则使用本地路径
+	modelDir := "./static/models"
+	if config.AppConfig.Model.NASEnabled && config.AppConfig.Model.NASPath != "" {
+		// 使用 NAS 路径
+		modelDir = config.AppConfig.Model.NASPath
+		logger.Log.Infof("模型库使用 NAS 路径提供静态文件服务: %s", modelDir)
+	} else {
+		logger.Log.Infof("模型库使用本地路径提供静态文件服务: %s", modelDir)
+	}
+	
+	// 使用自定义处理器来支持 UNC 路径
+	router.GET("/models/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		// 移除开头的斜杠
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		// 拼接完整路径
+		fullPath := modelDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求模型文件: %s -> %s", filepath, fullPath)
+		
+		// 检查文件是否存在
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("模型文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问模型文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("模型文件存在，大小: %d bytes", fileInfo.Size())
+		
+		// 返回文件
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -195,6 +251,19 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		{
 			tags.GET("", textureController.GetTags)                          // 获取标签列表
 			tags.GET("/:tagId/textures", textureController.GetTexturesByTag) // 根据标签获取贴图
+		}
+
+		// 模型库管理API
+		models := api.Group("/models")
+		{
+			models.POST("/upload", modelController.Upload)                  // 上传模型
+			models.GET("", modelController.List)                            // 获取模型列表
+			models.GET("/search", modelController.Search)                   // 搜索模型
+			models.GET("/statistics", modelController.GetStatistics)        // 获取统计信息
+			models.GET("/popular", modelController.GetPopular)              // 获取热门模型
+			models.GET("/:id", modelController.GetDetail)                   // 获取模型详情
+			models.POST("/:id/use", modelController.IncrementUseCount)      // 记录使用次数
+			models.DELETE("/:id", modelController.Delete)                   // 删除模型
 		}
 
 		// TODO: 添加其他业务控制器和路由

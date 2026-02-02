@@ -99,6 +99,28 @@ misc:
   # 会话过期时间（秒）
   session_timeout: 86400 # 24小时
 
+# 模型库配置
+model:
+  # 本地存储配置
+  local_storage_enabled: false # 是否保存到本地（如果只用NAS，可以关闭）
+  storage_dir: "static/models" # 本地存储路径
+
+  # 网络访问配置
+  base_url: "http://192.168.3.39:23359/models" # 模型文件的网络访问地址（可以是NAS地址）
+
+  # NAS存储配置（推荐使用SMB网络共享）
+  nas_enabled: true # 是否启用NAS存储
+  nas_path: "\\\\192.168.3.10\\project\\editor_v2\\static\\models" # NAS SMB共享路径（Windows格式）
+
+  # 文件限制
+  max_file_size: 104857600 # 100MB
+  max_thumbnail_size: 5242880 # 5MB
+
+  # 允许的文件类型
+  allowed_types:
+    - glb
+    - glt
+
 # ===========================================
 # 环境变量覆盖说明
 # ===========================================
@@ -107,6 +129,8 @@ misc:
 # - network.local.ip -> LOCAL_IP
 # - backup.enabled -> BACKUP_ENABLED
 # - cos.secret_id -> COS_SECRET_ID
+# - model.storage_dir -> MODEL_STORAGE_DIR
+# - model.max_file_size -> MODEL_MAX_FILE_SIZE
 # 等等...
 #
 # 优先级: 环境变量 > YAML配置文件 > 默认值

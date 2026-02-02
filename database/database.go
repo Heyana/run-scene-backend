@@ -96,6 +96,10 @@ func RunMigrations() error {
 		&models.TextureSyncLog{},
 		&models.DownloadQueue{},
 		&models.TextureMetrics{},
+		// 模型库相关表
+		&models.Model{},
+		&models.ModelTag{},
+		&models.ModelMetrics{},
 	)
 	if err != nil {
 		return err
@@ -109,6 +113,13 @@ func RunMigrations() error {
 	// 创建默认系统配置
 	if err := createDefaultSystemConfigs(); err != nil {
 		logger.Log.Warnf("创建默认系统配置失败: %v", err)
+	}
+
+	// 创建模型库存储目录
+	if err := os.MkdirAll(config.AppConfig.Model.StorageDir, 0755); err != nil {
+		logger.Log.Warnf("创建模型库存储目录失败: %v", err)
+	} else {
+		logger.Log.Infof("模型库存储目录: %s", config.AppConfig.Model.StorageDir)
 	}
 
 	// 运行一次性升级任务

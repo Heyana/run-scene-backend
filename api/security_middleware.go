@@ -630,7 +630,8 @@ func ProtectSensitivePathsMiddleware() gin.HandlerFunc {
 		"/docs/",       // 文档
 		"/frontend/",   // 前端代码
 		"/logger/",     // 日志代码
-		"/models/",     // 数据模型
+		// 注意：不再保护 /models/，因为模型文件需要公开访问
+		// "/models/",     // 数据模型代码（已改为模型文件静态访问）
 		"/middleware/", // 中间件代码
 		"/scripts/",    // 脚本
 		"/server/",     // 服务器代码
@@ -639,13 +640,13 @@ func ProtectSensitivePathsMiddleware() gin.HandlerFunc {
 		"/tmp/",        // 临时文件
 		"/utils/",      // 工具代码
 		"/@fs/",        // 文件系统访问路径
-		"/@fs",         // 文件系统访问路径（无斜杠）
-		"/fs/",         // 文件系统访问路径（简化版）
+		"/@fs",         // 文件系统访问路径（简化版）
 	}
 	
 	// 允许访问的路径（白名单）
 	allowedPaths := []string{
 		"/textures/",   // 材质文件公开访问
+		"/models/",     // 模型文件公开访问
 	}
 
 	return func(c *gin.Context) {
