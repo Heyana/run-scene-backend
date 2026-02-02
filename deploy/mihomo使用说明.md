@@ -25,6 +25,28 @@ sudo systemctl status mihomo
 sudo journalctl -u mihomo -f
 ```
 
+## 查看当前节点
+
+```bash
+# 查看"便宜机场"代理组当前选择的节点
+curl http://127.0.0.1:9090/proxies/便宜机场
+
+# 查看所有代理组状态
+curl http://127.0.0.1:9090/proxies
+
+# 测试代理是否工作
+curl -x http://127.0.0.1:7890 https://www.google.com -I
+```
+
+## 切换节点
+
+```bash
+# 切换到指定节点（替换节点名称）
+curl -X PUT http://127.0.0.1:9090/proxies/便宜机场 -d '{"name":"新加坡vless-1"}' -H "Content-Type: application/json"
+
+# 可用节点名称参考 mihomo.yaml 中的 proxies 列表
+```
+
 ## 卸载服务
 
 ```bash
