@@ -10,6 +10,7 @@ import (
 
 // Model 模型表
 type Model struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
 	Name          string     `gorm:"size:200;index" json:"name"`
 	Description   string     `gorm:"type:text" json:"description"`
 	Category      string     `gorm:"size:50;index" json:"category"`
