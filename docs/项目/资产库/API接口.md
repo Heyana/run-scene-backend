@@ -298,7 +298,7 @@ GET /api/assets/tags
 
 ```
 type: string (选填：tag, category)
-asset_type: string (选填：texture, environment, video, audio)
+asset_type: string (选填：image, video)
 ```
 
 **响应**：
@@ -347,7 +347,7 @@ GET /api/assets/statistics
 **查询参数**：
 
 ```
-type: string (选填：texture, environment, video, audio)
+type: string (选填：image, video)
 ```
 
 **响应**：
@@ -359,21 +359,20 @@ type: string (选填：texture, environment, video, audio)
     "total_assets": 500,
     "total_size": 5368709120,
     "type_distribution": {
-      "texture": 300,
-      "environment": 100,
-      "video": 80,
-      "audio": 20
+      "image": 400,
+      "video": 100
     },
     "format_distribution": {
-      "png": 150,
-      "jpg": 100,
-      "hdr": 80,
-      "mp4": 70
+      "png": 200,
+      "jpg": 150,
+      "webp": 50,
+      "mp4": 80,
+      "webm": 20
     },
     "category_distribution": {
       "material": 200,
-      "studio": 50,
-      "outdoor": 50
+      "environment": 100,
+      "background": 50
     },
     "recent_uploads": 25
   }
@@ -411,24 +410,14 @@ GET /api/assets/statistics/by-type
 {
   "code": 200,
   "data": {
-    "texture": {
-      "count": 300,
-      "total_size": 3221225472,
-      "avg_size": 10737418
-    },
-    "environment": {
-      "count": 100,
-      "total_size": 1073741824,
+    "image": {
+      "count": 400,
+      "total_size": 4294967296,
       "avg_size": 10737418
     },
     "video": {
-      "count": 80,
-      "total_size": 858993459,
-      "avg_size": 10737418
-    },
-    "audio": {
-      "count": 20,
-      "total_size": 214748365,
+      "count": 100,
+      "total_size": 1073741824,
       "avg_size": 10737418
     }
   }
