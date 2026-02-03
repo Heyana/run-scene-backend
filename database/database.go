@@ -100,6 +100,11 @@ func RunMigrations() error {
 		&models.Model{},
 		&models.ModelTag{},
 		&models.ModelMetrics{},
+		// 资产库相关表
+		&models.Asset{},
+		&models.AssetMetadata{},
+		&models.AssetTag{},
+		&models.AssetMetrics{},
 	)
 	if err != nil {
 		return err
@@ -120,6 +125,13 @@ func RunMigrations() error {
 		logger.Log.Warnf("创建模型库存储目录失败: %v", err)
 	} else {
 		logger.Log.Infof("模型库存储目录: %s", config.AppConfig.Model.StorageDir)
+	}
+	
+	// 创建资产库存储目录
+	if err := os.MkdirAll(config.AppConfig.Asset.StorageDir, 0755); err != nil {
+		logger.Log.Warnf("创建资产库存储目录失败: %v", err)
+	} else {
+		logger.Log.Infof("资产库存储目录: %s", config.AppConfig.Asset.StorageDir)
 	}
 
 	// 运行一次性升级任务

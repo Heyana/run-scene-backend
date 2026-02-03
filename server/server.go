@@ -126,6 +126,18 @@ func (s *Server) Start() error {
 
 		// 配置静态文件目录
 		s.router.Static("/static", "./static")
+		
+		// 配置模型库静态文件
+		if config.AppConfig.Model.LocalStorageEnabled {
+			s.router.Static("/models", config.AppConfig.Model.StorageDir)
+			s.log.Infof("模型库静态文件服务: %s", config.AppConfig.Model.StorageDir)
+		}
+		
+		// 配置资产库静态文件
+		if config.AppConfig.Asset.LocalStorageEnabled {
+			s.router.Static("/assets", config.AppConfig.Asset.StorageDir)
+			s.log.Infof("资产库静态文件服务: %s", config.AppConfig.Asset.StorageDir)
+		}
 
 		// 配置CDN目录（用于开发环境模拟CDN）
 		cdnPath := config.GetResourcePath()

@@ -170,6 +170,25 @@ type YAMLConfig struct {
 		MaxThumbnailSize    int64    `yaml:"max_thumbnail_size"`
 		AllowedTypes        []string `yaml:"allowed_types"`
 	} `yaml:"model"`
+
+	Asset struct {
+		LocalStorageEnabled bool `yaml:"local_storage_enabled"`
+		StorageDir          string `yaml:"storage_dir"`
+		BaseURL             string `yaml:"base_url"`
+		NASEnabled          bool `yaml:"nas_enabled"`
+		NASPath             string `yaml:"nas_path"`
+		MaxFileSize         map[string]int64 `yaml:"max_file_size"`
+		AllowedFormats      map[string][]string `yaml:"allowed_formats"`
+		Thumbnail           struct {
+			Width   int `yaml:"width"`
+			Height  int `yaml:"height"`
+			Quality int `yaml:"quality"`
+		} `yaml:"thumbnail"`
+		Video struct {
+			FFmpegPath    string  `yaml:"ffmpeg_path"`
+			ThumbnailTime float64 `yaml:"thumbnail_time"`
+		} `yaml:"video"`
+	} `yaml:"asset"`
 }
 
 // Config 应用程序配置结构
@@ -189,6 +208,7 @@ type Config struct {
 	Security      SecurityConfig // 安全配置
 	Texture       TextureConfig  // 贴图库配置
 	Model         ModelConfig    // 模型库配置
+	Asset         AssetConfig    // 资产库配置
 }
 
 // TextureConfig 贴图库配置
@@ -241,6 +261,31 @@ type ModelConfig struct {
 	MaxFileSize      int64    // 最大文件大小（字节）
 	MaxThumbnailSize int64    // 最大预览图大小（字节）
 	AllowedTypes     []string // 允许的文件类型
+}
+
+// AssetConfig 资产库配置
+type AssetConfig struct {
+	// 本地存储配置
+	LocalStorageEnabled bool   // 是否保存到本地
+	StorageDir          string // 存储目录
+	BaseURL             string // 网络访问地址
+	
+	// NAS存储配置
+	NASEnabled bool   // 是否启用NAS存储
+	NASPath    string // NAS SMB共享路径
+	
+	// 文件限制（按类型）
+	MaxFileSize    map[string]int64    // 最大文件大小（字节）
+	AllowedFormats map[string][]string // 允许的文件格式
+	
+	// 缩略图配置
+	ThumbnailWidth   int // 缩略图宽度
+	ThumbnailHeight  int // 缩略图高度
+	ThumbnailQuality int // 缩略图质量
+	
+	// 视频处理配置
+	FFmpegPath         string  // FFmpeg可执行文件路径
+	VideoThumbnailTime float64 // 视频截图时间点（秒）
 }
 
 // AppConfig 全局配置实例
@@ -308,6 +353,20 @@ func LoadConfig() error {
 			MaxFileSize:         getEnvAsInt64OrDefault("MODEL_MAX_FILE_SIZE", yamlConfig.Model.MaxFileSize),
 			MaxThumbnailSize:    getEnvAsInt64OrDefault("MODEL_MAX_THUMBNAIL_SIZE", yamlConfig.Model.MaxThumbnailSize),
 			AllowedTypes:        yamlConfig.Model.AllowedTypes,
+		},
+		Asset: AssetConfig{
+			LocalStorageEnabled: getEnvAsBoolOrDefault("ASSET_LOCAL_STORAGE_ENABLED", yamlConfig.Asset.LocalStorageEnabled),
+			StorageDir:          getEnvOrDefault("ASSET_STORAGE_DIR", yamlConfig.Asset.StorageDir),
+			BaseURL:             getEnvOrDefault("ASSET_BASE_URL", yamlConfig.Asset.BaseURL),
+			NASEnabled:          getEnvAsBoolOrDefault("ASSET_NAS_ENABLED", yamlConfig.Asset.NASEnabled),
+			NASPath:             getEnvOrDefault("ASSET_NAS_PATH", yamlConfig.Asset.NASPath),
+			MaxFileSize:         yamlConfig.Asset.MaxFileSize,
+			AllowedFormats:      yamlConfig.Asset.AllowedFormats,
+			ThumbnailWidth:      getEnvAsIntOrDefault("ASSET_THUMBNAIL_WIDTH", yamlConfig.Asset.Thumbnail.Width),
+			ThumbnailHeight:     getEnvAsIntOrDefault("ASSET_THUMBNAIL_HEIGHT", yamlConfig.Asset.Thumbnail.Height),
+			ThumbnailQuality:    getEnvAsIntOrDefault("ASSET_THUMBNAIL_QUALITY", yamlConfig.Asset.Thumbnail.Quality),
+			FFmpegPath:          getEnvOrDefault("ASSET_FFMPEG_PATH", yamlConfig.Asset.Video.FFmpegPath),
+			VideoThumbnailTime:  yamlConfig.Asset.Video.ThumbnailTime,
 		},
 	}
 
@@ -405,6 +464,26 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Model.MaxFileSize = 104857600   // 100MB
 	defaultConfig.Model.MaxThumbnailSize = 5242880 // 5MB
 	defaultConfig.Model.AllowedTypes = []string{"glb", "glt"}
+	
+	// 资产库默认配置
+	defaultConfig.Asset.LocalStorageEnabled = true
+	defaultConfig.Asset.StorageDir = "static/assets"
+	defaultConfig.Asset.BaseURL = ""
+	defaultConfig.Asset.NASEnabled = false
+	defaultConfig.Asset.NASPath = ""
+	defaultConfig.Asset.MaxFileSize = map[string]int64{
+		"image": 52428800,  // 50MB
+		"video": 524288000, // 500MB
+	}
+	defaultConfig.Asset.AllowedFormats = map[string][]string{
+		"image": {"jpg", "jpeg", "png", "webp"},
+		"video": {"mp4", "webm"},
+	}
+	defaultConfig.Asset.Thumbnail.Width = 512
+	defaultConfig.Asset.Thumbnail.Height = 512
+	defaultConfig.Asset.Thumbnail.Quality = 85
+	defaultConfig.Asset.Video.FFmpegPath = "ffmpeg"
+	defaultConfig.Asset.Video.ThumbnailTime = 1.0
 
 	// 尝试读取YAML配置文件
 	configFile := "config.yaml"
@@ -471,6 +550,10 @@ func loadYAMLConfig() *YAMLConfig {
 				// 模型库配置
 				if yamlConfig.Model.StorageDir != "" {
 					defaultConfig.Model = yamlConfig.Model
+				}
+				// 资产库配置
+				if yamlConfig.Asset.StorageDir != "" {
+					defaultConfig.Asset = yamlConfig.Asset
 				}
 			}
 		}

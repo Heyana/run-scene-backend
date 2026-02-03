@@ -40,6 +40,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	securityController := controllers.NewSecurityController()
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
+	assetController := controllers.NewAssetController(database.MustGetDB())
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -200,6 +201,60 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		c.File(fullPath)
 	})
 
+	// 资产文件静态服务
+	// 如果启用了 NAS，使用 NAS 路径；否则使用本地路径
+	assetDir := "./static/assets"
+	if config.AppConfig.Asset.NASEnabled && config.AppConfig.Asset.NASPath != "" {
+		// 使用 NAS 路径
+		assetDir = config.AppConfig.Asset.NASPath
+		logger.Log.Infof("资产库使用 NAS 路径提供静态文件服务: %s", assetDir)
+	} else {
+		logger.Log.Infof("资产库使用本地路径提供静态文件服务: %s", assetDir)
+	}
+	
+	// 使用自定义处理器来支持 UNC 路径
+	router.GET("/assets/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		// 移除开头的斜杠
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		// 拼接完整路径
+		fullPath := assetDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求资产文件: %s -> %s", filepath, fullPath)
+		
+		// 检查文件是否存在
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("资产文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问资产文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("资产文件存在，大小: %d bytes", fileInfo.Size())
+		
+		// 返回文件
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -264,6 +319,20 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			models.GET("/:id", modelController.GetDetail)                   // 获取模型详情
 			models.POST("/:id/use", modelController.IncrementUseCount)      // 记录使用次数
 			models.DELETE("/:id", modelController.Delete)                   // 删除模型
+		}
+
+		// 资产库管理API
+		assets := api.Group("/assets")
+		{
+			assets.POST("/upload", assetController.Upload)                     // 上传资产
+			assets.GET("", assetController.List)                               // 获取资产列表
+			assets.GET("/statistics", assetController.GetStatistics)           // 获取统计信息
+			assets.GET("/statistics/by-type", assetController.GetStatisticsByType) // 按类型统计
+			assets.GET("/popular", assetController.GetPopular)                 // 获取热门资产
+			assets.GET("/:id", assetController.GetDetail)                      // 获取资产详情
+			assets.PUT("/:id", assetController.Update)                         // 更新资产信息
+			assets.DELETE("/:id", assetController.Delete)                      // 删除资产
+			assets.POST("/:id/use", assetController.IncrementUseCount)         // 记录使用次数
 		}
 
 		// TODO: 添加其他业务控制器和路由
