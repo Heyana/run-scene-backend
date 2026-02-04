@@ -267,3 +267,25 @@ sudo systemctl start 3d-editor-backend
 ---
 
 **部署完成后，记得在前端配置中修改 API 地址为 NAS 的 IP！**
+
+cd E:\hxy\project-2026\dify-full
+
+# 恢复备份
+
+Copy-Item docker-compose.yaml.backup docker-compose.yaml -Force
+
+# 启动服务
+
+docker-compose up -d
+
+# 等待
+
+Start-Sleep -Seconds 30
+
+# 检查端口
+
+netstat -ano | findstr ":3001"
+
+# 测试容器 IP 访问
+
+curl http://172.18.0.5:3000

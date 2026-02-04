@@ -6,6 +6,7 @@ import (
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/models"
+	"go_wails_project_manager/models/hunyuan"
 	"os"
 	"path/filepath"
 
@@ -105,6 +106,9 @@ func RunMigrations() error {
 		&models.AssetMetadata{},
 		&models.AssetTag{},
 		&models.AssetMetrics{},
+		// 混元3D相关表
+		&hunyuan.HunyuanTask{},
+		&hunyuan.HunyuanConfig{},
 	)
 	if err != nil {
 		return err

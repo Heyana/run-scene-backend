@@ -41,6 +41,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
+	hunyuanController := controllers.NewHunyuanController(database.MustGetDB())
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -255,6 +256,60 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		c.File(fullPath)
 	})
 
+	// 混元3D文件静态服务
+	// 如果启用了 NAS，使用 NAS 路径；否则使用本地路径
+	hunyuanDir := "./static/hunyuan"
+	if config.AppConfig.Hunyuan.NASEnabled && config.AppConfig.Hunyuan.NASPath != "" {
+		// 使用 NAS 路径
+		hunyuanDir = config.AppConfig.Hunyuan.NASPath
+		logger.Log.Infof("混元3D使用 NAS 路径提供静态文件服务: %s", hunyuanDir)
+	} else {
+		logger.Log.Infof("混元3D使用本地路径提供静态文件服务: %s", hunyuanDir)
+	}
+	
+	// 使用自定义处理器来支持 UNC 路径
+	router.GET("/hunyuan/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		// 移除开头的斜杠
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		// 拼接完整路径
+		fullPath := hunyuanDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求混元3D文件: %s -> %s", filepath, fullPath)
+		
+		// 检查文件是否存在
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("混元3D文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问混元3D文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("混元3D文件存在，大小: %d bytes", fileInfo.Size())
+		
+		// 返回文件
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -333,6 +388,23 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			assets.PUT("/:id", assetController.Update)                         // 更新资产信息
 			assets.DELETE("/:id", assetController.Delete)                      // 删除资产
 			assets.POST("/:id/use", assetController.IncrementUseCount)         // 记录使用次数
+		}
+
+		// 混元3D管理API
+		hunyuan := api.Group("/hunyuan")
+		{
+			hunyuan.POST("/tasks", hunyuanController.SubmitTask)              // 提交任务
+			hunyuan.GET("/tasks", hunyuanController.ListTasks)                // 任务列表
+			hunyuan.GET("/tasks/:id", hunyuanController.GetTask)              // 获取任务详情
+			hunyuan.POST("/tasks/:id/poll", hunyuanController.PollTask)       // 轮询任务
+			hunyuan.POST("/tasks/:id/cancel", hunyuanController.CancelTask)   // 取消任务
+			hunyuan.POST("/tasks/:id/retry", hunyuanController.RetryTask)     // 重试任务
+			hunyuan.DELETE("/tasks/:id", hunyuanController.DeleteTask)        // 删除任务
+			hunyuan.GET("/statistics", hunyuanController.GetStatistics)       // 获取统计信息
+			hunyuan.GET("/config", hunyuanController.GetConfig)               // 获取配置
+			hunyuan.PUT("/config", hunyuanController.UpdateConfig)            // 更新配置
+			hunyuan.POST("/config/validate", hunyuanController.ValidateConfig) // 验证配置
+			hunyuan.GET("/poller/status", hunyuanController.GetPollerStatus)  // 获取轮询器状态
 		}
 
 		// TODO: 添加其他业务控制器和路由

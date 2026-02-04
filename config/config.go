@@ -189,6 +189,28 @@ type YAMLConfig struct {
 			ThumbnailTime float64 `yaml:"thumbnail_time"`
 		} `yaml:"video"`
 	} `yaml:"asset"`
+
+	Hunyuan struct {
+		SecretID            string `yaml:"secret_id"`
+		SecretKey           string `yaml:"secret_key"`
+		Region              string `yaml:"region"`
+		DefaultModel        string `yaml:"default_model"`
+		DefaultFaceCount    int    `yaml:"default_face_count"`
+		DefaultGenerateType string `yaml:"default_generate_type"`
+		DefaultEnablePBR    bool   `yaml:"default_enable_pbr"`
+		DefaultResultFormat string `yaml:"default_result_format"`
+		MaxConcurrent       int    `yaml:"max_concurrent"`
+		PollInterval        int    `yaml:"poll_interval"`
+		TaskTimeout         int    `yaml:"task_timeout"`
+		LocalStorageEnabled bool   `yaml:"local_storage_enabled"`
+		StorageDir          string `yaml:"storage_dir"`
+		BaseURL             string `yaml:"base_url"`
+		NASEnabled          bool   `yaml:"nas_enabled"`
+		NASPath             string `yaml:"nas_path"`
+		DefaultCategory     string `yaml:"default_category"`
+		MaxRetryTimes       int    `yaml:"max_retry_times"`
+		RetryInterval       int    `yaml:"retry_interval"`
+	} `yaml:"hunyuan"`
 }
 
 // Config 应用程序配置结构
@@ -209,6 +231,7 @@ type Config struct {
 	Texture       TextureConfig  // 贴图库配置
 	Model         ModelConfig    // 模型库配置
 	Asset         AssetConfig    // 资产库配置
+	Hunyuan       HunyuanConfig  // 混元3D配置
 }
 
 // TextureConfig 贴图库配置
@@ -286,6 +309,38 @@ type AssetConfig struct {
 	// 视频处理配置
 	FFmpegPath         string  // FFmpeg可执行文件路径
 	VideoThumbnailTime float64 // 视频截图时间点（秒）
+}
+
+// HunyuanConfig 混元3D配置
+type HunyuanConfig struct {
+	// API配置
+	SecretID  string // 腾讯云SecretId
+	SecretKey string // 腾讯云SecretKey
+	Region    string // 地域
+	
+	// 默认参数
+	DefaultModel        string // 默认模型版本
+	DefaultFaceCount    int    // 默认面数
+	DefaultGenerateType string // 默认生成类型
+	DefaultEnablePBR    bool   // 默认PBR材质
+	DefaultResultFormat string // 默认结果格式
+	
+	// 任务控制
+	MaxConcurrent int // 最大并发任务数
+	PollInterval  int // 轮询间隔（秒）
+	TaskTimeout   int // 任务超时（秒）
+	
+	// 存储配置
+	LocalStorageEnabled bool   // 是否启用本地存储
+	StorageDir          string // 存储目录
+	BaseURL             string // 网络访问地址
+	NASEnabled          bool   // 是否启用NAS存储
+	NASPath             string // NAS SMB共享路径
+	DefaultCategory     string // 默认分类
+	
+	// 重试配置
+	MaxRetryTimes int // 最大重试次数
+	RetryInterval int // 重试间隔（秒）
 }
 
 // AppConfig 全局配置实例
@@ -367,6 +422,27 @@ func LoadConfig() error {
 			ThumbnailQuality:    getEnvAsIntOrDefault("ASSET_THUMBNAIL_QUALITY", yamlConfig.Asset.Thumbnail.Quality),
 			FFmpegPath:          getEnvOrDefault("ASSET_FFMPEG_PATH", yamlConfig.Asset.Video.FFmpegPath),
 			VideoThumbnailTime:  yamlConfig.Asset.Video.ThumbnailTime,
+		},
+		Hunyuan: HunyuanConfig{
+			SecretID:            getEnvOrDefault("HUNYUAN_SECRET_ID", yamlConfig.Hunyuan.SecretID),
+			SecretKey:           getEnvOrDefault("HUNYUAN_SECRET_KEY", yamlConfig.Hunyuan.SecretKey),
+			Region:              getEnvOrDefault("HUNYUAN_REGION", yamlConfig.Hunyuan.Region),
+			DefaultModel:        getEnvOrDefault("HUNYUAN_DEFAULT_MODEL", yamlConfig.Hunyuan.DefaultModel),
+			DefaultFaceCount:    getEnvAsIntOrDefault("HUNYUAN_DEFAULT_FACE_COUNT", yamlConfig.Hunyuan.DefaultFaceCount),
+			DefaultGenerateType: getEnvOrDefault("HUNYUAN_DEFAULT_GENERATE_TYPE", yamlConfig.Hunyuan.DefaultGenerateType),
+			DefaultEnablePBR:    getEnvAsBoolOrDefault("HUNYUAN_DEFAULT_ENABLE_PBR", yamlConfig.Hunyuan.DefaultEnablePBR),
+			DefaultResultFormat: getEnvOrDefault("HUNYUAN_DEFAULT_RESULT_FORMAT", yamlConfig.Hunyuan.DefaultResultFormat),
+			MaxConcurrent:       getEnvAsIntOrDefault("HUNYUAN_MAX_CONCURRENT", yamlConfig.Hunyuan.MaxConcurrent),
+			PollInterval:        getEnvAsIntOrDefault("HUNYUAN_POLL_INTERVAL", yamlConfig.Hunyuan.PollInterval),
+			TaskTimeout:         getEnvAsIntOrDefault("HUNYUAN_TASK_TIMEOUT", yamlConfig.Hunyuan.TaskTimeout),
+			LocalStorageEnabled: getEnvAsBoolOrDefault("HUNYUAN_LOCAL_STORAGE_ENABLED", yamlConfig.Hunyuan.LocalStorageEnabled),
+			StorageDir:          getEnvOrDefault("HUNYUAN_STORAGE_DIR", yamlConfig.Hunyuan.StorageDir),
+			BaseURL:             getEnvOrDefault("HUNYUAN_BASE_URL", yamlConfig.Hunyuan.BaseURL),
+			NASEnabled:          getEnvAsBoolOrDefault("HUNYUAN_NAS_ENABLED", yamlConfig.Hunyuan.NASEnabled),
+			NASPath:             getEnvOrDefault("HUNYUAN_NAS_PATH", yamlConfig.Hunyuan.NASPath),
+			DefaultCategory:     getEnvOrDefault("HUNYUAN_DEFAULT_CATEGORY", yamlConfig.Hunyuan.DefaultCategory),
+			MaxRetryTimes:       getEnvAsIntOrDefault("HUNYUAN_MAX_RETRY_TIMES", yamlConfig.Hunyuan.MaxRetryTimes),
+			RetryInterval:       getEnvAsIntOrDefault("HUNYUAN_RETRY_INTERVAL", yamlConfig.Hunyuan.RetryInterval),
 		},
 	}
 
@@ -484,6 +560,23 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Asset.Thumbnail.Quality = 85
 	defaultConfig.Asset.Video.FFmpegPath = "ffmpeg"
 	defaultConfig.Asset.Video.ThumbnailTime = 1.0
+	
+	// 混元3D默认配置
+	defaultConfig.Hunyuan.Region = "ap-guangzhou"
+	defaultConfig.Hunyuan.DefaultModel = "3.1"
+	defaultConfig.Hunyuan.DefaultFaceCount = 500000
+	defaultConfig.Hunyuan.DefaultGenerateType = "Normal"
+	defaultConfig.Hunyuan.DefaultEnablePBR = true
+	defaultConfig.Hunyuan.DefaultResultFormat = "GLB"
+	defaultConfig.Hunyuan.MaxConcurrent = 3
+	defaultConfig.Hunyuan.PollInterval = 5
+	defaultConfig.Hunyuan.TaskTimeout = 86400
+	defaultConfig.Hunyuan.LocalStorageEnabled = true
+	defaultConfig.Hunyuan.StorageDir = "static/hunyuan"
+	defaultConfig.Hunyuan.NASEnabled = false
+	defaultConfig.Hunyuan.DefaultCategory = "AI生成"
+	defaultConfig.Hunyuan.MaxRetryTimes = 3
+	defaultConfig.Hunyuan.RetryInterval = 10
 
 	// 尝试读取YAML配置文件
 	configFile := "config.yaml"
@@ -554,6 +647,10 @@ func loadYAMLConfig() *YAMLConfig {
 				// 资产库配置
 				if yamlConfig.Asset.StorageDir != "" {
 					defaultConfig.Asset = yamlConfig.Asset
+				}
+				// 混元3D配置
+				if yamlConfig.Hunyuan.StorageDir != "" {
+					defaultConfig.Hunyuan = yamlConfig.Hunyuan
 				}
 			}
 		}

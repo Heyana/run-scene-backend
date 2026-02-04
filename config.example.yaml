@@ -121,6 +121,38 @@ model:
     - glb
     - glt
 
+# 混元3D配置
+hunyuan:
+  # API配置
+  secret_id: "" # 腾讯云SecretId
+  secret_key: "" # 腾讯云SecretKey
+  region: "ap-guangzhou" # 地域
+
+  # 默认参数
+  default_model: "3.1" # 默认模型版本
+  default_face_count: 500000 # 默认面数
+  default_generate_type: "Normal" # 默认生成类型
+  default_enable_pbr: true # 默认PBR材质
+  default_result_format: "GLB" # 默认结果格式
+
+  # 任务控制
+  max_concurrent: 3 # 最大并发任务数
+  poll_interval: 5 # 轮询间隔（秒）
+  task_timeout: 86400 # 任务超时（秒，24小时）
+
+  # 存储配置
+  local_storage_enabled: true # 是否启用本地存储
+  storage_dir: "static/hunyuan" # 本地存储路径
+  base_url: "" # 网络访问地址（留空自动生成）
+  nas_enabled: false # 是否启用NAS存储
+  nas_path: "" # NAS SMB共享路径（Windows格式）
+  default_category: "AI生成" # 默认分类
+
+  # 重试配置
+  max_retry_times: 3 # 最大重试次数
+  retry_interval: 10 # 重试间隔（秒）
+
+
 # ===========================================
 # 环境变量覆盖说明
 # ===========================================
@@ -131,6 +163,7 @@ model:
 # - cos.secret_id -> COS_SECRET_ID
 # - model.storage_dir -> MODEL_STORAGE_DIR
 # - model.max_file_size -> MODEL_MAX_FILE_SIZE
+# - hunyuan.secret_id -> HUNYUAN_SECRET_ID
 # 等等...
 #
 # 优先级: 环境变量 > YAML配置文件 > 默认值
