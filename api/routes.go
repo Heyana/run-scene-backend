@@ -42,6 +42,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
 	hunyuanController := controllers.NewHunyuanController(database.MustGetDB())
+	imageController := controllers.NewImageController()
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -405,6 +406,12 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			hunyuan.PUT("/config", hunyuanController.UpdateConfig)            // 更新配置
 			hunyuan.POST("/config/validate", hunyuanController.ValidateConfig) // 验证配置
 			hunyuan.GET("/poller/status", hunyuanController.GetPollerStatus)  // 获取轮询器状态
+		}
+
+		// 图片处理API
+		image := api.Group("/image")
+		{
+			image.POST("/flipy-webp", imageController.FlipYAndToWebp) // 图片翻转并转换为WebP
 		}
 
 		// TODO: 添加其他业务控制器和路由

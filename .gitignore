@@ -16,3 +16,5 @@ config.yaml
 config.*.yaml
 !config.example.yaml
 app-linux-fixed
+*.db
+*.exe
