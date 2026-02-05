@@ -486,6 +486,12 @@ func LoadConfig() error {
 		// .env 文件不存在时不报错，生产环境通常使用系统环境变量
 	}
 
+	// 7. 加载AI配置
+	if err := LoadAIConfig(); err != nil {
+		// AI配置加载失败不影响主程序启动
+		logrus.Warnf("加载AI配置失败: %v", err)
+	}
+
 	return nil
 }
 
@@ -566,7 +572,7 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Hunyuan.DefaultModel = "3.1"
 	defaultConfig.Hunyuan.DefaultFaceCount = 500000
 	defaultConfig.Hunyuan.DefaultGenerateType = "Normal"
-	defaultConfig.Hunyuan.DefaultEnablePBR = true
+	defaultConfig.Hunyuan.DefaultEnablePBR = false
 	defaultConfig.Hunyuan.DefaultResultFormat = "GLB"
 	defaultConfig.Hunyuan.MaxConcurrent = 3
 	defaultConfig.Hunyuan.PollInterval = 5

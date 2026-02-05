@@ -109,6 +109,8 @@ func RunMigrations() error {
 		// 混元3D相关表
 		&hunyuan.HunyuanTask{},
 		&hunyuan.HunyuanConfig{},
+		// AI蓝图相关表
+		&models.BlueprintHistory{},
 	)
 	if err != nil {
 		return err

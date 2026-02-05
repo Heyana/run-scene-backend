@@ -43,6 +43,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 	assetController := controllers.NewAssetController(database.MustGetDB())
 	hunyuanController := controllers.NewHunyuanController(database.MustGetDB())
 	imageController := controllers.NewImageController()
+	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -412,6 +413,13 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		image := api.Group("/image")
 		{
 			image.POST("/flipy-webp", imageController.FlipYAndToWebp) // 图片翻转并转换为WebP
+		}
+
+		// AI蓝图生成API
+		blueprint := api.Group("/blueprint")
+		{
+			blueprint.POST("/generate", blueprintController.Generate)   // 生成蓝图
+			blueprint.GET("/history", blueprintController.GetHistory)   // 获取生成历史
 		}
 
 		// TODO: 添加其他业务控制器和路由
