@@ -190,6 +190,10 @@ type YAMLConfig struct {
 		} `yaml:"video"`
 	} `yaml:"asset"`
 
+	AI3D struct {
+		DefaultProvider string `yaml:"default_provider"`
+	} `yaml:"ai3d"`
+
 	Hunyuan struct {
 		SecretID            string `yaml:"secret_id"`
 		SecretKey           string `yaml:"secret_key"`
@@ -211,6 +215,30 @@ type YAMLConfig struct {
 		MaxRetryTimes       int    `yaml:"max_retry_times"`
 		RetryInterval       int    `yaml:"retry_interval"`
 	} `yaml:"hunyuan"`
+
+	Meshy struct {
+		APIKey                 string `yaml:"api_key"`
+		BaseURL                string `yaml:"base_url"`
+		DefaultAIModel         string `yaml:"default_ai_model"`
+		DefaultEnablePBR       bool   `yaml:"default_enable_pbr"`
+		DefaultTopology        string `yaml:"default_topology"`
+		DefaultTargetPolycount int    `yaml:"default_target_polycount"`
+		DefaultShouldRemesh    bool   `yaml:"default_should_remesh"`
+		DefaultShouldTexture   bool   `yaml:"default_should_texture"`
+		DefaultSavePreRemeshed bool   `yaml:"default_save_pre_remeshed"`
+		DefaultResultFormat    string `yaml:"default_result_format"`
+		MaxConcurrent          int    `yaml:"max_concurrent"`
+		PollInterval           int    `yaml:"poll_interval"`
+		TaskTimeout            int    `yaml:"task_timeout"`
+		LocalStorageEnabled    bool   `yaml:"local_storage_enabled"`
+		StorageDir             string `yaml:"storage_dir"`
+		BaseURLCDN             string `yaml:"base_url_cdn"`
+		NASEnabled             bool   `yaml:"nas_enabled"`
+		NASPath                string `yaml:"nas_path"`
+		DefaultCategory        string `yaml:"default_category"`
+		MaxRetryTimes          int    `yaml:"max_retry_times"`
+		RetryInterval          int    `yaml:"retry_interval"`
+	} `yaml:"meshy"`
 }
 
 // Config 应用程序配置结构
@@ -231,7 +259,39 @@ type Config struct {
 	Texture       TextureConfig  // 贴图库配置
 	Model         ModelConfig    // 模型库配置
 	Asset         AssetConfig    // 资产库配置
+	AI3D          AI3DConfig     // AI 3D平台配置
 	Hunyuan       HunyuanConfig  // 混元3D配置
+	Meshy         MeshyConfig    // Meshy配置
+}
+
+// AI3DConfig AI 3D平台配置
+type AI3DConfig struct {
+	DefaultProvider string // 默认平台
+}
+
+// MeshyConfig Meshy配置
+type MeshyConfig struct {
+	APIKey                 string
+	BaseURL                string
+	DefaultAIModel         string
+	DefaultEnablePBR       bool
+	DefaultTopology        string
+	DefaultTargetPolycount int
+	DefaultShouldRemesh    bool
+	DefaultShouldTexture   bool
+	DefaultSavePreRemeshed bool
+	DefaultResultFormat    string
+	MaxConcurrent          int
+	PollInterval           int
+	TaskTimeout            int
+	LocalStorageEnabled    bool
+	StorageDir             string
+	BaseURLCDN             string
+	NASEnabled             bool
+	NASPath                string
+	DefaultCategory        string
+	MaxRetryTimes          int
+	RetryInterval          int
 }
 
 // TextureConfig 贴图库配置
@@ -423,6 +483,9 @@ func LoadConfig() error {
 			FFmpegPath:          getEnvOrDefault("ASSET_FFMPEG_PATH", yamlConfig.Asset.Video.FFmpegPath),
 			VideoThumbnailTime:  yamlConfig.Asset.Video.ThumbnailTime,
 		},
+		AI3D: AI3DConfig{
+			DefaultProvider: getEnvOrDefault("AI3D_DEFAULT_PROVIDER", yamlConfig.AI3D.DefaultProvider),
+		},
 		Hunyuan: HunyuanConfig{
 			SecretID:            getEnvOrDefault("HUNYUAN_SECRET_ID", yamlConfig.Hunyuan.SecretID),
 			SecretKey:           getEnvOrDefault("HUNYUAN_SECRET_KEY", yamlConfig.Hunyuan.SecretKey),
@@ -443,6 +506,29 @@ func LoadConfig() error {
 			DefaultCategory:     getEnvOrDefault("HUNYUAN_DEFAULT_CATEGORY", yamlConfig.Hunyuan.DefaultCategory),
 			MaxRetryTimes:       getEnvAsIntOrDefault("HUNYUAN_MAX_RETRY_TIMES", yamlConfig.Hunyuan.MaxRetryTimes),
 			RetryInterval:       getEnvAsIntOrDefault("HUNYUAN_RETRY_INTERVAL", yamlConfig.Hunyuan.RetryInterval),
+		},
+		Meshy: MeshyConfig{
+			APIKey:                 getEnvOrDefault("MESHY_API_KEY", yamlConfig.Meshy.APIKey),
+			BaseURL:                getEnvOrDefault("MESHY_BASE_URL", yamlConfig.Meshy.BaseURL),
+			DefaultAIModel:         getEnvOrDefault("MESHY_DEFAULT_AI_MODEL", yamlConfig.Meshy.DefaultAIModel),
+			DefaultEnablePBR:       getEnvAsBoolOrDefault("MESHY_DEFAULT_ENABLE_PBR", yamlConfig.Meshy.DefaultEnablePBR),
+			DefaultTopology:        getEnvOrDefault("MESHY_DEFAULT_TOPOLOGY", yamlConfig.Meshy.DefaultTopology),
+			DefaultTargetPolycount: getEnvAsIntOrDefault("MESHY_DEFAULT_TARGET_POLYCOUNT", yamlConfig.Meshy.DefaultTargetPolycount),
+			DefaultShouldRemesh:    getEnvAsBoolOrDefault("MESHY_DEFAULT_SHOULD_REMESH", yamlConfig.Meshy.DefaultShouldRemesh),
+			DefaultShouldTexture:   getEnvAsBoolOrDefault("MESHY_DEFAULT_SHOULD_TEXTURE", yamlConfig.Meshy.DefaultShouldTexture),
+			DefaultSavePreRemeshed: getEnvAsBoolOrDefault("MESHY_DEFAULT_SAVE_PRE_REMESHED", yamlConfig.Meshy.DefaultSavePreRemeshed),
+			DefaultResultFormat:    getEnvOrDefault("MESHY_DEFAULT_RESULT_FORMAT", yamlConfig.Meshy.DefaultResultFormat),
+			MaxConcurrent:          getEnvAsIntOrDefault("MESHY_MAX_CONCURRENT", yamlConfig.Meshy.MaxConcurrent),
+			PollInterval:           getEnvAsIntOrDefault("MESHY_POLL_INTERVAL", yamlConfig.Meshy.PollInterval),
+			TaskTimeout:            getEnvAsIntOrDefault("MESHY_TASK_TIMEOUT", yamlConfig.Meshy.TaskTimeout),
+			LocalStorageEnabled:    getEnvAsBoolOrDefault("MESHY_LOCAL_STORAGE_ENABLED", yamlConfig.Meshy.LocalStorageEnabled),
+			StorageDir:             getEnvOrDefault("MESHY_STORAGE_DIR", yamlConfig.Meshy.StorageDir),
+			BaseURLCDN:             getEnvOrDefault("MESHY_BASE_URL_CDN", yamlConfig.Meshy.BaseURLCDN),
+			NASEnabled:             getEnvAsBoolOrDefault("MESHY_NAS_ENABLED", yamlConfig.Meshy.NASEnabled),
+			NASPath:                getEnvOrDefault("MESHY_NAS_PATH", yamlConfig.Meshy.NASPath),
+			DefaultCategory:        getEnvOrDefault("MESHY_DEFAULT_CATEGORY", yamlConfig.Meshy.DefaultCategory),
+			MaxRetryTimes:          getEnvAsIntOrDefault("MESHY_MAX_RETRY_TIMES", yamlConfig.Meshy.MaxRetryTimes),
+			RetryInterval:          getEnvAsIntOrDefault("MESHY_RETRY_INTERVAL", yamlConfig.Meshy.RetryInterval),
 		},
 	}
 
@@ -567,6 +653,9 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Asset.Video.FFmpegPath = "ffmpeg"
 	defaultConfig.Asset.Video.ThumbnailTime = 1.0
 	
+	// AI 3D平台默认配置
+	defaultConfig.AI3D.DefaultProvider = "hunyuan"
+	
 	// 混元3D默认配置
 	defaultConfig.Hunyuan.Region = "ap-guangzhou"
 	defaultConfig.Hunyuan.DefaultModel = "3.1"
@@ -583,6 +672,26 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Hunyuan.DefaultCategory = "AI生成"
 	defaultConfig.Hunyuan.MaxRetryTimes = 3
 	defaultConfig.Hunyuan.RetryInterval = 10
+	
+	// Meshy默认配置
+	defaultConfig.Meshy.BaseURL = "https://api.meshy.ai"
+	defaultConfig.Meshy.DefaultAIModel = "meshy-6"
+	defaultConfig.Meshy.DefaultEnablePBR = true
+	defaultConfig.Meshy.DefaultTopology = "quad"
+	defaultConfig.Meshy.DefaultTargetPolycount = 10000
+	defaultConfig.Meshy.DefaultShouldRemesh = true
+	defaultConfig.Meshy.DefaultShouldTexture = true
+	defaultConfig.Meshy.DefaultSavePreRemeshed = true
+	defaultConfig.Meshy.DefaultResultFormat = "GLB"
+	defaultConfig.Meshy.MaxConcurrent = 3
+	defaultConfig.Meshy.PollInterval = 5
+	defaultConfig.Meshy.TaskTimeout = 86400
+	defaultConfig.Meshy.LocalStorageEnabled = false
+	defaultConfig.Meshy.StorageDir = "static/meshy"
+	defaultConfig.Meshy.NASEnabled = false
+	defaultConfig.Meshy.DefaultCategory = "AI生成"
+	defaultConfig.Meshy.MaxRetryTimes = 3
+	defaultConfig.Meshy.RetryInterval = 10
 
 	// 尝试读取YAML配置文件
 	configFile := "config.yaml"
@@ -654,9 +763,17 @@ func loadYAMLConfig() *YAMLConfig {
 				if yamlConfig.Asset.StorageDir != "" {
 					defaultConfig.Asset = yamlConfig.Asset
 				}
+				// AI 3D平台配置
+				if yamlConfig.AI3D.DefaultProvider != "" {
+					defaultConfig.AI3D = yamlConfig.AI3D
+				}
 				// 混元3D配置
 				if yamlConfig.Hunyuan.StorageDir != "" {
 					defaultConfig.Hunyuan = yamlConfig.Hunyuan
+				}
+				// Meshy配置
+				if yamlConfig.Meshy.StorageDir != "" {
+					defaultConfig.Meshy = yamlConfig.Meshy
 				}
 			}
 		}

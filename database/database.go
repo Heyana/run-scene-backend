@@ -4,9 +4,9 @@ package database
 import (
 	"fmt"
 	"go_wails_project_manager/config"
+	"go_wails_project_manager/database/migrations"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/models"
-	"go_wails_project_manager/models/hunyuan"
 	"os"
 	"path/filepath"
 
@@ -79,6 +79,12 @@ func AutoMigrate(models ...interface{}) error {
 func RunMigrations() error {
 	logger.Log.Info("开始运行数据库迁移...")
 
+	// 执行AI3D表合并迁移（必须在AutoMigrate之前）
+	if err := migrations.MergeAI3DTasks(db); err != nil {
+		logger.Log.Errorf("AI3D表合并失败: %v", err)
+		// 不返回错误，允许系统继续运行
+	}
+
 	// 自动迁移所有模型
 	err := db.AutoMigrate(
 		&models.MediaLibrary{},
@@ -106,9 +112,11 @@ func RunMigrations() error {
 		&models.AssetMetadata{},
 		&models.AssetTag{},
 		&models.AssetMetrics{},
-		// 混元3D相关表
-		&hunyuan.HunyuanTask{},
-		&hunyuan.HunyuanConfig{},
+		// 注意：不再迁移旧的 hunyuan_tasks 和 meshy_tasks 表
+		// 它们已被合并到 ai3d_tasks 表中
+		// &hunyuan.HunyuanTask{},
+		// &hunyuan.HunyuanConfig{},
+		// &meshy.MeshyTask{},
 		// AI蓝图相关表
 		&models.BlueprintHistory{},
 	)

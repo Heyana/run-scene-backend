@@ -127,11 +127,7 @@ func (s *Server) Start() error {
 		// 配置静态文件目录
 		s.router.Static("/static", "./static")
 		
-		// 配置模型库静态文件
-		if config.AppConfig.Model.LocalStorageEnabled {
-			s.router.Static("/models", config.AppConfig.Model.StorageDir)
-			s.log.Infof("模型库静态文件服务: %s", config.AppConfig.Model.StorageDir)
-		}
+		// 注意: /models 路由在 routes.go 中注册（支持 NAS 路径）
 		
 		// 配置资产库静态文件
 		if config.AppConfig.Asset.LocalStorageEnabled {

@@ -12,6 +12,7 @@ import (
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/middleware"
 	"go_wails_project_manager/response"
+	ai3dService "go_wails_project_manager/services/ai3d"
 
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
@@ -34,16 +35,23 @@ func Ping(c *gin.Context) {
 }
 
 // RegisterRoutes 注册API路由
-func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
+func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService interface{}) {
 	// 初始化有用的控制器
 	backupController := controllers.NewBackupController()
 	securityController := controllers.NewSecurityController()
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
-	hunyuanController := controllers.NewHunyuanController(database.MustGetDB())
 	imageController := controllers.NewImageController()
 	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
+	
+	// 创建AI3D统一控制器（如果服务已初始化）
+	var ai3dUnifiedController *controllers.AI3DUnifiedController
+	if ai3dTaskService != nil {
+		if service, ok := ai3dTaskService.(*ai3dService.TaskService); ok {
+			ai3dUnifiedController = controllers.NewAI3DUnifiedController(service)
+		}
+	}
 
 	// 设置API文档（仅开发环境）
 	if config.IsDev() {
@@ -312,6 +320,52 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 		c.File(fullPath)
 	})
 
+	// Meshy文件静态服务
+	meshyDir := "./static/meshy"
+	if config.AppConfig.Meshy.NASEnabled && config.AppConfig.Meshy.NASPath != "" {
+		meshyDir = config.AppConfig.Meshy.NASPath
+		logger.Log.Infof("Meshy使用 NAS 路径提供静态文件服务: %s", meshyDir)
+	} else {
+		logger.Log.Infof("Meshy使用本地路径提供静态文件服务: %s", meshyDir)
+	}
+	
+	router.GET("/meshy/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		fullPath := meshyDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求Meshy文件: %s -> %s", filepath, fullPath)
+		
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("Meshy文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问Meshy文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("Meshy文件存在，大小: %d bytes", fileInfo.Size())
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -392,21 +446,23 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger) {
 			assets.POST("/:id/use", assetController.IncrementUseCount)         // 记录使用次数
 		}
 
-		// 混元3D管理API
-		hunyuan := api.Group("/hunyuan")
+		// AI 3D生成统一API（支持多平台）
+		ai3d := api.Group("/ai3d")
 		{
-			hunyuan.POST("/tasks", hunyuanController.SubmitTask)              // 提交任务
-			hunyuan.GET("/tasks", hunyuanController.ListTasks)                // 任务列表
-			hunyuan.GET("/tasks/:id", hunyuanController.GetTask)              // 获取任务详情
-			hunyuan.POST("/tasks/:id/poll", hunyuanController.PollTask)       // 轮询任务
-			hunyuan.POST("/tasks/:id/cancel", hunyuanController.CancelTask)   // 取消任务
-			hunyuan.POST("/tasks/:id/retry", hunyuanController.RetryTask)     // 重试任务
-			hunyuan.DELETE("/tasks/:id", hunyuanController.DeleteTask)        // 删除任务
-			hunyuan.GET("/statistics", hunyuanController.GetStatistics)       // 获取统计信息
-			hunyuan.GET("/config", hunyuanController.GetConfig)               // 获取配置
-			hunyuan.PUT("/config", hunyuanController.UpdateConfig)            // 更新配置
-			hunyuan.POST("/config/validate", hunyuanController.ValidateConfig) // 验证配置
-			hunyuan.GET("/poller/status", hunyuanController.GetPollerStatus)  // 获取轮询器状态
+			// 使用统一控制器
+			if ai3dUnifiedController != nil {
+				ai3d.POST("/tasks", ai3dUnifiedController.SubmitTask)           // 提交任务（支持provider参数）
+				ai3d.GET("/tasks", ai3dUnifiedController.ListTasks)             // 任务列表
+				ai3d.GET("/tasks/:id", ai3dUnifiedController.GetTask)           // 获取任务详情
+				ai3d.POST("/tasks/:id/poll", ai3dUnifiedController.PollTask)    // 轮询任务
+				ai3d.DELETE("/tasks/:id", ai3dUnifiedController.DeleteTask)     // 删除任务
+				ai3d.GET("/config", ai3dUnifiedController.GetConfig)            // 获取配置
+			} else {
+				// 如果服务未初始化，返回错误
+				ai3d.POST("/tasks", func(c *gin.Context) {
+					response.Error(c, 500, "AI3D服务未初始化")
+				})
+			}
 		}
 
 		// 图片处理API

@@ -2,12 +2,16 @@
 package core
 
 import (
+	"time"
+
 	"go_wails_project_manager/api"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/database"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/server"
 	"go_wails_project_manager/services"
+	ai3dService "go_wails_project_manager/services/ai3d"
+	"go_wails_project_manager/services/ai3d/adapters"
 	textureServices "go_wails_project_manager/services/texture"
 	"os"
 
@@ -17,11 +21,12 @@ import (
 
 // AppCore 应用程序核心结构
 type AppCore struct {
-	Server          *server.Server
-	Log             *logrus.Logger
-	BackupScheduler *services.BackupScheduler
+	Server             *server.Server
+	Log                *logrus.Logger
+	BackupScheduler    *services.BackupScheduler
 	TextureSyncService *textureServices.SyncService
-	IsRunning       bool
+	AI3DTaskService    *ai3dService.TaskService
+	IsRunning          bool
 }
 
 // NewAppCore 创建新的应用核心实例
@@ -76,6 +81,12 @@ func (a *AppCore) InitDatabases() error {
 	// 初始化贴图服务
 	if err := a.InitTextureService(); err != nil {
 		a.Log.Errorf("贴图服务初始化失败: %v", err)
+		return err
+	}
+
+	// 初始化AI3D服务
+	if err := a.InitAI3DService(); err != nil {
+		a.Log.Errorf("AI3D服务初始化失败: %v", err)
 		return err
 	}
 
@@ -162,6 +173,45 @@ func (a *AppCore) InitTextureService() error {
 	return nil
 }
 
+// InitAI3DService 初始化AI3D服务
+func (a *AppCore) InitAI3DService() error {
+	a.Log.Info("正在初始化AI3D服务...")
+
+	// 获取数据库连接
+	db, err := database.GetDB()
+	if err != nil {
+		return err
+	}
+
+	// 创建任务服务（轮询间隔5秒）
+	a.AI3DTaskService = ai3dService.NewTaskService(db, 5*time.Second)
+
+	// 注册混元适配器
+	if config.AppConfig.Hunyuan.SecretID != "" {
+		hunyuanAdapter := adapters.NewHunyuanAdapter(db, &config.AppConfig.Hunyuan)
+		a.AI3DTaskService.RegisterAdapter(hunyuanAdapter)
+		a.Log.Info("混元适配器已注册")
+	} else {
+		a.Log.Warn("混元配置未设置，跳过注册")
+	}
+
+	// 注册Meshy适配器
+	if config.AppConfig.Meshy.APIKey != "" {
+		meshyAdapter := adapters.NewMeshyAdapter(db, &config.AppConfig.Meshy)
+		a.AI3DTaskService.RegisterAdapter(meshyAdapter)
+		a.Log.Info("Meshy适配器已注册")
+	} else {
+		a.Log.Warn("Meshy配置未设置，跳过注册")
+	}
+
+	// 启动轮询器
+	a.AI3DTaskService.StartPoller()
+	a.Log.Info("AI3D轮询器已启动")
+
+	a.Log.Info("AI3D服务初始化成功")
+	return nil
+}
+
 // StartServer 启动HTTP服务器
 func (a *AppCore) StartServer() error {
 	// 创建并启动 Gin 服务器
@@ -170,8 +220,8 @@ func (a *AppCore) StartServer() error {
 
 	// 添加自定义路由
 	a.Server.AddRoutes(func(router *gin.Engine) {
-		// 注册所有 API 路由
-		api.RegisterRoutes(router, a.Log)
+		// 注册所有 API 路由（传递AI3D服务）
+		api.RegisterRoutes(router, a.Log, a.AI3DTaskService)
 	})
 
 	err := a.Server.Start()
@@ -213,28 +263,35 @@ func (a *AppCore) GetServerStatus() map[string]interface{} {
 func (a *AppCore) Shutdown() {
 	a.Log.Info("🔄 开始优雅停机...")
 
-	// 1. 停止贴图同步调度器
+	// 1. 停止AI3D轮询器
+	if a.AI3DTaskService != nil {
+		a.Log.Info("⏳ 正在停止AI3D轮询器...")
+		a.AI3DTaskService.StopPoller()
+		a.Log.Info("✅ AI3D轮询器已停止")
+	}
+
+	// 2. 停止贴图同步调度器
 	if a.TextureSyncService != nil {
 		a.Log.Info("⏳ 正在停止贴图同步调度器...")
 		a.TextureSyncService.StopScheduler()
 		a.Log.Info("✅ 贴图同步调度器已停止")
 	}
 
-	// 2. 停止备份调度器
+	// 3. 停止备份调度器
 	if a.BackupScheduler != nil {
 		a.Log.Info("⏳ 正在停止备份调度器...")
 		a.BackupScheduler.Stop()
 		a.Log.Info("✅ 备份调度器已停止")
 	}
 
-	// 3. 停止 HTTP 服务器
+	// 4. 停止 HTTP 服务器
 	if err := a.StopServer(); err != nil {
 		a.Log.Errorf("❌ 停止服务器失败: %v", err)
 	} else {
 		a.Log.Info("✅ HTTP服务器已停止")
 	}
 
-	// 4. 关闭数据库连接
+	// 5. 关闭数据库连接
 	a.Log.Info("⏳ 正在关闭数据库连接...")
 	if err := database.Close(); err != nil {
 		a.Log.Errorf("❌ 关闭数据库失败: %v", err)
