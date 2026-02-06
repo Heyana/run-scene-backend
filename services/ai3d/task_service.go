@@ -53,7 +53,7 @@ func (s *TaskService) CreateTask(ctx context.Context, task *ai3d.Task) error {
 		return fmt.Errorf("不支持的平台: %s", task.Provider)
 	}
 
-	// 提交到平台
+	// 提交到平台（适配器会更新task.GenerationParams）
 	providerTaskID, err := adapter.SubmitTask(ctx, task)
 	if err != nil {
 		return fmt.Errorf("提交任务失败: %w", err)
@@ -63,6 +63,9 @@ func (s *TaskService) CreateTask(ctx context.Context, task *ai3d.Task) error {
 	task.ProviderTaskID = providerTaskID
 	task.Status = "WAIT"
 	task.Progress = 0
+
+	// 打印调试信息
+	logger.Log.Infof("创建任务，GenerationParams: %+v", task.GenerationParams)
 
 	return s.db.Create(task).Error
 }
@@ -100,9 +103,17 @@ func (s *TaskService) ListTasks(page, pageSize int, filters map[string]string) (
 	var total int64
 	query.Count(&total)
 
-	// 分页查询
+	// 分页查询 - 只选择需要的字段，避免加载大字段
 	var tasks []*ai3d.Task
-	err := query.Order("created_at DESC").
+	err := query.Select("id", "created_at", "updated_at", "deleted_at", 
+		"provider", "provider_task_id", "status", "progress", 
+		"input_type", "prompt", "generation_params",
+		"model_url", "pre_remeshed_url", "thumbnail_url", 
+		"local_path", "pre_remeshed_path", "pre_remeshed_nas_path",
+		"nas_path", "thumbnail_path", "file_size", "file_hash",
+		"error_code", "error_message", "name", "description", 
+		"category", "tags", "created_by", "created_ip").
+		Order("created_at DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&tasks).Error
@@ -140,6 +151,40 @@ func (s *TaskService) pollTaskInternal(ctx context.Context, task *ai3d.Task) err
 		return err
 	}
 
+	// 打印任务状态
+	logger.Log.Infof("任务 %d (%s:%s) 状态: %s, 进度: %d%%", 
+		task.ID, task.Provider, task.ProviderTaskID, status.Status, status.Progress)
+
+	// 检查是否需要更新数据库
+	// 只在以下情况更新：
+	// 1. 状态变化
+	// 2. 进度变化超过10%
+	// 3. 任务完成或失败
+	shouldUpdate := false
+	progressDiff := 0
+	
+	if task.Status != status.Status {
+		shouldUpdate = true
+		logger.Log.Infof("任务 %d 状态变化: %s -> %s", task.ID, task.Status, status.Status)
+	} else if task.Progress != status.Progress {
+		progressDiff = status.Progress - task.Progress
+		if progressDiff < 0 {
+			progressDiff = -progressDiff
+		}
+		// 进度变化超过10%或达到完成状态时更新
+		if progressDiff >= 10 || status.Status == "DONE" || status.Status == "FAIL" {
+			shouldUpdate = true
+			logger.Log.Infof("任务 %d 进度变化: %d%% -> %d%% (变化%d%%)", 
+				task.ID, task.Progress, status.Progress, progressDiff)
+		}
+	}
+
+	// 如果不需要更新，直接返回
+	if !shouldUpdate && status.Status != "DONE" && status.Status != "FAIL" {
+		logger.Log.Debugf("任务 %d 进度变化不足10%%，跳过数据库更新", task.ID)
+		return nil
+	}
+
 	// 更新数据库
 	updates := map[string]interface{}{
 		"status":   status.Status,
@@ -148,6 +193,9 @@ func (s *TaskService) pollTaskInternal(ctx context.Context, task *ai3d.Task) err
 
 	if status.ModelURL != "" {
 		updates["model_url"] = status.ModelURL
+	}
+	if status.PreRemeshedURL != "" {
+		updates["pre_remeshed_url"] = status.PreRemeshedURL
 	}
 	if status.ThumbnailURL != "" {
 		updates["thumbnail_url"] = status.ThumbnailURL
@@ -163,8 +211,11 @@ func (s *TaskService) pollTaskInternal(ctx context.Context, task *ai3d.Task) err
 	if status.Status == "DONE" && status.ModelURL != "" {
 		logger.Log.Infof("任务 %d (%s:%s) 完成，开始下载文件", task.ID, task.Provider, task.ProviderTaskID)
 		
-		// 更新任务的ModelURL和ThumbnailURL，以便下载
+		// 更新任务的ModelURL、PreRemeshedURL和ThumbnailURL，以便下载
 		task.ModelURL = &status.ModelURL
+		if status.PreRemeshedURL != "" {
+			task.PreRemeshedURL = &status.PreRemeshedURL
+		}
 		if status.ThumbnailURL != "" {
 			task.ThumbnailURL = &status.ThumbnailURL
 		}
@@ -180,10 +231,19 @@ func (s *TaskService) pollTaskInternal(ctx context.Context, task *ai3d.Task) err
 			if result.ThumbnailPath != "" {
 				updates["thumbnail_path"] = result.ThumbnailPath
 			}
+			if result.PreRemeshedPath != "" {
+				updates["pre_remeshed_path"] = result.PreRemeshedPath
+			}
+			if result.PreRemeshedNASPath != "" {
+				updates["pre_remeshed_nas_path"] = result.PreRemeshedNASPath
+			}
 			updates["file_size"] = result.FileSize
 			updates["file_hash"] = result.FileHash
 			
 			logger.Log.Infof("任务 %d 文件已保存: %s", task.ID, result.NASPath)
+			if result.PreRemeshedNASPath != "" {
+				logger.Log.Infof("任务 %d PreRemeshed模型已保存: %s", task.ID, result.PreRemeshedNASPath)
+			}
 		} else {
 			logger.Log.Errorf("任务 %d 下载文件失败: %v", task.ID, err)
 		}

@@ -677,8 +677,8 @@ func loadYAMLConfig() *YAMLConfig {
 	defaultConfig.Meshy.BaseURL = "https://api.meshy.ai"
 	defaultConfig.Meshy.DefaultAIModel = "meshy-6"
 	defaultConfig.Meshy.DefaultEnablePBR = true
-	defaultConfig.Meshy.DefaultTopology = "quad"
-	defaultConfig.Meshy.DefaultTargetPolycount = 10000
+	defaultConfig.Meshy.DefaultTopology = "triangle"
+	defaultConfig.Meshy.DefaultTargetPolycount = 30000
 	defaultConfig.Meshy.DefaultShouldRemesh = true
 	defaultConfig.Meshy.DefaultShouldTexture = true
 	defaultConfig.Meshy.DefaultSavePreRemeshed = true

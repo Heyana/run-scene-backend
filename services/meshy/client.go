@@ -56,10 +56,11 @@ type TaskResponse struct {
 
 // ModelURLs 模型URL
 type ModelURLs struct {
-	GLB  string `json:"glb,omitempty"`
-	FBX  string `json:"fbx,omitempty"`
-	USDZ string `json:"usdz,omitempty"`
-	OBJ  string `json:"obj,omitempty"`
+	GLB            string `json:"glb,omitempty"`
+	FBX            string `json:"fbx,omitempty"`
+	USDZ           string `json:"usdz,omitempty"`
+	OBJ            string `json:"obj,omitempty"`
+	PreRemeshedGLB string `json:"pre_remeshed_glb,omitempty"` // 重网格化之前的原始高精度模型
 }
 
 // TaskError 任务错误

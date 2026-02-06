@@ -12,9 +12,9 @@ import (
 // Task 统一AI3D任务模型
 type Task struct {
 	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"createdAt"`
+	CreatedAt time.Time      `gorm:"index:idx_deleted_created,priority:2" json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedAt gorm.DeletedAt `gorm:"index;index:idx_deleted_created,priority:1" json:"-"`
 
 	// 平台信息
 	Provider       string `gorm:"index;not null" json:"provider"`             // hunyuan | meshy
@@ -24,23 +24,25 @@ type Task struct {
 	Status   string `gorm:"index;not null" json:"status"` // WAIT | RUN | DONE | FAIL
 	Progress int    `json:"progress"`                     // 0-100
 
-	// 输入参数
-	InputType   string  `gorm:"not null" json:"inputType"`      // text | image | multi_view
-	Prompt      *string `json:"prompt,omitempty"`               // 文本提示词
-	ImageURL    *string `json:"imageUrl,omitempty"`             // 图片URL
-	ImageBase64 *string `gorm:"type:text" json:"-"`             // Base64图片（不返回给前端）
+	// 输入参数（不保存图片数据，太大）
+	InputType string  `gorm:"not null" json:"inputType"` // text | image | multi_view
+	Prompt    *string `json:"prompt,omitempty"`          // 文本提示词
+	// ImageURL 和 ImageBase64 不保存到数据库，只在提交时临时使用
 
-	// 生成参数（JSON存储平台特定参数）
+	// 生成参数（JSON存储平台特定参数，包括实际使用的默认值）
 	GenerationParams GenerationParams `gorm:"type:text" json:"generationParams"`
 
 	// 结果文件
-	ModelURL      *string `json:"modelUrl,omitempty"`      // 平台返回的模型URL
-	ThumbnailURL  *string `json:"thumbnailUrl,omitempty"`  // 平台返回的缩略图URL
-	LocalPath     *string `json:"localPath,omitempty"`     // 本地存储路径
-	NASPath       *string `json:"nasPath,omitempty"`       // NAS存储路径
-	ThumbnailPath *string `json:"thumbnailPath,omitempty"` // 缩略图路径
-	FileSize      *int64  `json:"fileSize,omitempty"`      // 文件大小（字节）
-	FileHash      *string `json:"fileHash,omitempty"`      // MD5哈希
+	ModelURL           *string `json:"modelUrl,omitempty"`           // 平台返回的模型URL
+	PreRemeshedURL     *string `json:"preRemeshedUrl,omitempty"`     // PreRemeshed模型URL（Meshy专用）
+	ThumbnailURL       *string `json:"thumbnailUrl,omitempty"`       // 平台返回的缩略图URL
+	LocalPath          *string `json:"localPath,omitempty"`          // 本地存储路径
+	PreRemeshedPath    *string `json:"preRemeshedPath,omitempty"`    // PreRemeshed模型本地路径
+	PreRemeshedNASPath *string `json:"preRemeshedNasPath,omitempty"` // PreRemeshed模型NAS路径
+	NASPath            *string `json:"nasPath,omitempty"`            // NAS存储路径
+	ThumbnailPath      *string `json:"thumbnailPath,omitempty"`      // 缩略图路径
+	FileSize           *int64  `json:"fileSize,omitempty"`           // 文件大小（字节）
+	FileHash           *string `json:"fileHash,omitempty"`           // MD5哈希
 
 	// 错误信息
 	ErrorCode    *string `json:"errorCode,omitempty"`

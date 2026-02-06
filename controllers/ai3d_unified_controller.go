@@ -26,31 +26,41 @@ func NewAI3DUnifiedController(taskService *ai3dService.TaskService) *AI3DUnified
 
 // SubmitTask 提交任务
 func (c *AI3DUnifiedController) SubmitTask(ctx *gin.Context) {
-	var req struct {
-		Provider         string                 `json:"provider" binding:"required"` // hunyuan | meshy
-		InputType        string                 `json:"inputType" binding:"required"` // text | image
-		Prompt           *string                `json:"prompt"`
-		ImageURL         *string                `json:"imageUrl"`
-		ImageBase64      *string                `json:"imageBase64"`
-		GenerationParams map[string]interface{} `json:"generationParams"`
-		Name             *string                `json:"name"`
-		Description      *string                `json:"description"`
-		Tags             *string                `json:"tags"`
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	// 先解析为通用map，以便处理平铺的参数
+	var reqMap map[string]interface{}
+	if err := ctx.ShouldBindJSON(&reqMap); err != nil {
 		response.Error(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 验证输入
-	if req.InputType == "text" && req.Prompt == nil {
-		response.Error(ctx, http.StatusBadRequest, "文生3D需要提供prompt")
+	// 提取必需字段
+	provider, _ := reqMap["provider"].(string)
+	inputType, _ := reqMap["inputType"].(string)
+	
+	if provider == "" || inputType == "" {
+		response.Error(ctx, http.StatusBadRequest, "provider和inputType为必填项")
 		return
 	}
-	if req.InputType == "image" && req.ImageURL == nil && req.ImageBase64 == nil {
-		response.Error(ctx, http.StatusBadRequest, "图生3D需要提供imageUrl或imageBase64")
-		return
+
+	// 验证输入
+	if inputType == "text" {
+		if prompt, ok := reqMap["prompt"].(string); !ok || prompt == "" {
+			response.Error(ctx, http.StatusBadRequest, "文生3D需要提供prompt")
+			return
+		}
+	}
+	if inputType == "image" {
+		hasImage := false
+		if imageUrl, ok := reqMap["imageUrl"].(string); ok && imageUrl != "" {
+			hasImage = true
+		}
+		if imageBase64, ok := reqMap["imageBase64"].(string); ok && imageBase64 != "" {
+			hasImage = true
+		}
+		if !hasImage {
+			response.Error(ctx, http.StatusBadRequest, "图生3D需要提供imageUrl或imageBase64")
+			return
+		}
 	}
 
 	// 获取用户信息
@@ -59,65 +69,98 @@ func (c *AI3DUnifiedController) SubmitTask(ctx *gin.Context) {
 		username = "anonymous"
 	}
 
-	// 构建任务
-	task := &ai3d.Task{
-		Provider:         req.Provider,
-		InputType:        req.InputType,
-		Prompt:           req.Prompt,
-		GenerationParams: req.GenerationParams,
-		Category:         "AI生成",
-		Tags:             req.Tags,
-		CreatedBy:        username,
-		CreatedIP:        ctx.ClientIP(),
+	// 构建GenerationParams：收集所有非标准字段
+	standardFields := map[string]bool{
+		"provider": true, "inputType": true, "prompt": true,
+		"imageUrl": true, "imageBase64": true, "name": true,
+		"description": true, "tags": true, "generationParams": true,
+	}
+	
+	generationParams := make(map[string]interface{})
+	
+	// 如果有generationParams字段，先合并它
+	if gp, ok := reqMap["generationParams"].(map[string]interface{}); ok {
+		for k, v := range gp {
+			generationParams[k] = v
+		}
+	}
+	
+	// 收集平铺的参数（如enablePbr, model, faceCount等）
+	for key, value := range reqMap {
+		if !standardFields[key] {
+			generationParams[key] = value
+		}
 	}
 
-	// 处理图片输入：分离base64 data URI和普通URL
-	if req.ImageURL != nil && *req.ImageURL != "" {
-		imageURL := *req.ImageURL
+	// 处理图片输入：提取base64数据，临时存储在GenerationParams中
+	if imageUrl, ok := reqMap["imageUrl"].(string); ok && imageUrl != "" {
 		// 检查是否是base64 data URI格式
-		if len(imageURL) > 100 && (imageURL[:22] == "data:image/png;base64," || 
-			imageURL[:23] == "data:image/jpeg;base64," ||
-			imageURL[:22] == "data:image/jpg;base64," ||
-			imageURL[:22] == "data:image/webp;base64,") {
-			// 是base64 data URI，提取base64部分保存到ImageBase64
-			// 找到逗号位置
+		if len(imageUrl) > 100 && (imageUrl[:22] == "data:image/png;base64," || 
+			imageUrl[:23] == "data:image/jpeg;base64," ||
+			imageUrl[:22] == "data:image/jpg;base64," ||
+			imageUrl[:23] == "data:image/webp;base64,") {
+			// 提取base64部分
 			commaIdx := 0
-			for i, c := range imageURL {
+			for i, c := range imageUrl {
 				if c == ',' {
 					commaIdx = i
 					break
 				}
 			}
-			if commaIdx > 0 && commaIdx < len(imageURL)-1 {
-				base64Data := imageURL[commaIdx+1:]
-				task.ImageBase64 = &base64Data
-				// ImageURL设为空，避免保存大数据
-				task.ImageURL = nil
+			if commaIdx > 0 && commaIdx < len(imageUrl)-1 {
+				base64Data := imageUrl[commaIdx+1:]
+				generationParams["_imageBase64"] = base64Data
 			}
 		} else {
-			// 是普通URL，直接保存
-			task.ImageURL = req.ImageURL
+			// 普通URL
+			generationParams["_imageUrl"] = imageUrl
 		}
-	} else if req.ImageBase64 != nil {
-		task.ImageBase64 = req.ImageBase64
+	} else if imageBase64, ok := reqMap["imageBase64"].(string); ok && imageBase64 != "" {
+		generationParams["_imageBase64"] = imageBase64
+	}
+
+	// 提取prompt
+	var prompt *string
+	if p, ok := reqMap["prompt"].(string); ok && p != "" {
+		prompt = &p
+	}
+
+	// 构建任务
+	task := &ai3d.Task{
+		Provider:         provider,
+		InputType:        inputType,
+		Prompt:           prompt,
+		GenerationParams: generationParams,
+		Category:         "AI生成",
+		CreatedBy:        username,
+		CreatedIP:        ctx.ClientIP(),
 	}
 
 	// 设置任务名称
-	if req.Name != nil && *req.Name != "" {
-		task.Name = *req.Name
+	if name, ok := reqMap["name"].(string); ok && name != "" {
+		task.Name = name
 	} else {
 		task.Name = fmt.Sprintf("任务_%s", time.Now().Format("20060102_150405"))
 	}
-	task.Description = req.Description
+	
+	// 设置描述
+	if desc, ok := reqMap["description"].(string); ok && desc != "" {
+		task.Description = &desc
+	}
+	
+	// 设置标签
+	if tags, ok := reqMap["tags"].(string); ok && tags != "" {
+		task.Tags = &tags
+	}
 
-	// 创建任务
+	// 创建任务（适配器会更新GenerationParams为实际使用的参数）
 	if err := c.taskService.CreateTask(ctx, task); err != nil {
 		response.Error(ctx, http.StatusInternalServerError, fmt.Sprintf("提交任务失败: %v", err))
 		return
 	}
 
 	response.Success(ctx, gin.H{
-		"task": task,
+		"task": task, // 返回的task.GenerationParams已包含实际使用的参数
 	})
 }
 
@@ -154,12 +197,6 @@ func (c *AI3DUnifiedController) ListTasks(ctx *gin.Context) {
 		}
 		if thumbURL := tasks[i].GetThumbnailURL(baseURL); thumbURL != "" {
 			tasks[i].ThumbnailURL = &thumbURL
-		}
-		
-		// 清理大字段：如果imageUrl包含base64数据，清空它以减少传输量
-		if tasks[i].ImageURL != nil && len(*tasks[i].ImageURL) > 200 {
-			// 如果是base64 data URI（通常很长），清空它
-			tasks[i].ImageURL = nil
 		}
 	}
 

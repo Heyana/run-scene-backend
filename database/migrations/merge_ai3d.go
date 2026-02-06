@@ -110,20 +110,20 @@ func convertHunyuanTask(ht *hunyuanModel.HunyuanTask) *ai3d.Task {
 		Progress:       100, // 混元任务没有进度字段，默认100
 		InputType:      ht.InputType,
 		Prompt:         ht.Prompt,
-		ImageURL:       ht.ImageURL,
-		Name:           ht.Name,
-		Description:    ht.Description,
-		Category:       ht.Category,
-		Tags:           ht.Tags,
-		CreatedBy:      ht.CreatedBy,
-		CreatedIP:      ht.CreatedIP,
-		LocalPath:      ht.LocalPath,
-		NASPath:        ht.NASPath,
-		ThumbnailPath:  ht.ThumbnailPath,
-		FileSize:       ht.FileSize,
-		FileHash:       ht.FileHash,
-		ErrorCode:      ht.ErrorCode,
-		ErrorMessage:   ht.ErrorMessage,
+		// ImageURL 字段已删除，不再保存
+		Name:          ht.Name,
+		Description:   ht.Description,
+		Category:      ht.Category,
+		Tags:          ht.Tags,
+		CreatedBy:     ht.CreatedBy,
+		CreatedIP:     ht.CreatedIP,
+		LocalPath:     ht.LocalPath,
+		NASPath:       ht.NASPath,
+		ThumbnailPath: ht.ThumbnailPath,
+		FileSize:      ht.FileSize,
+		FileHash:      ht.FileHash,
+		ErrorCode:     ht.ErrorCode,
+		ErrorMessage:  ht.ErrorMessage,
 	}
 
 	// 构建生成参数
@@ -169,10 +169,7 @@ func convertMeshyTask(mt *meshyModel.MeshyTask) *ai3d.Task {
 		CreatedIP:      mt.CreatedIP,
 	}
 
-	// 设置图片URL
-	if mt.ImageURL != "" {
-		task.ImageURL = &mt.ImageURL
-	}
+	// ImageURL 字段已删除，不再保存
 
 	// 设置文件路径
 	if mt.LocalPath != "" {

@@ -37,30 +37,52 @@ func (a *MeshyAdapter) GetName() string {
 }
 
 func (a *MeshyAdapter) SubmitTask(ctx context.Context, task *ai3d.Task) (string, error) {
-	// 构建图片URL
+	// 从 GenerationParams 提取Meshy参数，并填充默认值
+	aiModel := getStringParam(task.GenerationParams, "aiModel", a.config.DefaultAIModel)
+	enablePBR := getBoolParam(task.GenerationParams, "enablePbr", a.config.DefaultEnablePBR)
+	topology := getStringParam(task.GenerationParams, "topology", a.config.DefaultTopology)
+	targetPolycount := getIntParam(task.GenerationParams, "targetPolycount", a.config.DefaultTargetPolycount)
+	shouldRemesh := getBoolParam(task.GenerationParams, "shouldRemesh", a.config.DefaultShouldRemesh)
+	shouldTexture := getBoolParam(task.GenerationParams, "shouldTexture", a.config.DefaultShouldTexture)
+	savePreRemeshed := getBoolParam(task.GenerationParams, "savePreRemeshed", a.config.DefaultSavePreRemeshed)
+
+	// 构建图片URL（从临时字段获取）
 	imageURL := ""
-	if task.ImageURL != nil && *task.ImageURL != "" {
-		imageURL = *task.ImageURL
-	} else if task.ImageBase64 != nil && *task.ImageBase64 != "" {
+	if url, ok := task.GenerationParams["_imageUrl"].(string); ok && url != "" {
+		imageURL = url
+	} else if base64, ok := task.GenerationParams["_imageBase64"].(string); ok && base64 != "" {
 		// 从ImageBase64重新构建Data URI格式
-		imageURL = "data:image/png;base64," + *task.ImageBase64
+		imageURL = "data:image/png;base64," + base64
 	}
 
 	if imageURL == "" {
 		return "", fmt.Errorf("Meshy需要提供图片")
 	}
 
-	// 从 GenerationParams 提取Meshy参数
+	// 构建API请求参数
 	params := &meshyService.ImageTo3DRequest{
 		ImageURL:             imageURL,
-		AIModel:              getStringParam(task.GenerationParams, "aiModel", a.config.DefaultAIModel),
-		EnablePBR:            getBoolParam(task.GenerationParams, "enablePbr", a.config.DefaultEnablePBR),
-		Topology:             getStringParam(task.GenerationParams, "topology", a.config.DefaultTopology),
-		TargetPolycount:      getIntParam(task.GenerationParams, "targetPolycount", a.config.DefaultTargetPolycount),
-		ShouldRemesh:         getBoolParam(task.GenerationParams, "shouldRemesh", a.config.DefaultShouldRemesh),
-		ShouldTexture:        getBoolParam(task.GenerationParams, "shouldTexture", a.config.DefaultShouldTexture),
-		SavePreRemeshedModel: getBoolParam(task.GenerationParams, "savePreRemeshed", a.config.DefaultSavePreRemeshed),
+		AIModel:              aiModel,
+		EnablePBR:            enablePBR,
+		Topology:             topology,
+		TargetPolycount:      targetPolycount,
+		ShouldRemesh:         shouldRemesh,
+		ShouldTexture:        shouldTexture,
+		SavePreRemeshedModel: savePreRemeshed,
 	}
+
+	// 保存实际使用的参数到GenerationParams（不包括图片数据）
+	task.GenerationParams = ai3d.GenerationParams{
+		"aiModel":         aiModel,
+		"enablePbr":       enablePBR,
+		"topology":        topology,
+		"targetPolycount": targetPolycount,
+		"shouldRemesh":    shouldRemesh,
+		"shouldTexture":   shouldTexture,
+		"savePreRemeshed": savePreRemeshed,
+	}
+
+	fmt.Printf("Meshy适配器更新GenerationParams: %+v\n", task.GenerationParams)
 
 	// 调用Meshy API
 	taskID, err := a.client.SubmitImageTo3D(params)
@@ -84,7 +106,7 @@ func (a *MeshyAdapter) QueryTask(ctx context.Context, providerTaskID string) (*a
 		Progress: resp.Progress,
 	}
 
-	// 提取模型URL
+	// 提取模型URL（优先使用优化后的模型）
 	if resp.ModelURLs != nil {
 		if resp.ModelURLs.GLB != "" {
 			status.ModelURL = resp.ModelURLs.GLB
@@ -92,6 +114,11 @@ func (a *MeshyAdapter) QueryTask(ctx context.Context, providerTaskID string) (*a
 			status.ModelURL = resp.ModelURLs.FBX
 		} else if resp.ModelURLs.OBJ != "" {
 			status.ModelURL = resp.ModelURLs.OBJ
+		}
+		
+		// 保存PreRemeshed模型URL（如果存在）
+		if resp.ModelURLs.PreRemeshedGLB != "" {
+			status.PreRemeshedURL = resp.ModelURLs.PreRemeshedGLB
 		}
 	}
 
@@ -115,14 +142,19 @@ func (a *MeshyAdapter) DownloadResult(ctx context.Context, task *ai3d.Task) (*ai
 	if task.ThumbnailURL != nil {
 		thumbnailURL = *task.ThumbnailURL
 	}
+	
+	preRemeshedURL := ""
+	if task.PreRemeshedURL != nil {
+		preRemeshedURL = *task.PreRemeshedURL
+	}
 
 	// 创建临时任务结构用于下载
 	tempTask := &meshy.MeshyTask{
 		TaskID: task.ProviderTaskID,
 	}
 
-	// 调用存储服务下载
-	info, err := a.storage.SaveTaskResult(tempTask, *task.ModelURL, thumbnailURL)
+	// 调用存储服务下载（包括PreRemeshed模型）
+	info, err := a.storage.SaveTaskResult(tempTask, *task.ModelURL, thumbnailURL, preRemeshedURL)
 	if err != nil {
 		return nil, fmt.Errorf("下载Meshy文件失败: %w", err)
 	}
@@ -140,6 +172,12 @@ func (a *MeshyAdapter) DownloadResult(ctx context.Context, task *ai3d.Task) (*ai
 	}
 	if info.ThumbnailPath != "" {
 		result.ThumbnailPath = info.ThumbnailPath
+	}
+	if info.PreRemeshedPath != "" {
+		result.PreRemeshedPath = info.PreRemeshedPath
+	}
+	if info.PreRemeshedNASPath != "" {
+		result.PreRemeshedNASPath = info.PreRemeshedNASPath
 	}
 
 	return result, nil

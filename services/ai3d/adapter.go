@@ -25,19 +25,22 @@ type ProviderAdapter interface {
 
 // TaskStatus 任务状态
 type TaskStatus struct {
-	Status       string // WAIT | RUN | DONE | FAIL
-	Progress     int    // 0-100
-	ModelURL     string
-	ThumbnailURL string
-	ErrorCode    string
-	ErrorMessage string
+	Status         string // WAIT | RUN | DONE | FAIL
+	Progress       int    // 0-100
+	ModelURL       string
+	PreRemeshedURL string // PreRemeshed模型URL（Meshy专用，高精度原始模型）
+	ThumbnailURL   string
+	ErrorCode      string
+	ErrorMessage   string
 }
 
 // DownloadResult 下载结果
 type DownloadResult struct {
-	LocalPath     string
-	NASPath       string
-	ThumbnailPath string
-	FileSize      int64
-	FileHash      string
+	LocalPath          string
+	NASPath            string
+	ThumbnailPath      string
+	PreRemeshedPath    string // PreRemeshed模型本地路径（如果有）
+	PreRemeshedNASPath string // PreRemeshed模型NAS路径（如果有）
+	FileSize           int64
+	FileHash           string
 }

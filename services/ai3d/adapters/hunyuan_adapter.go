@@ -36,33 +36,41 @@ func (a *HunyuanAdapter) GetName() string {
 }
 
 func (a *HunyuanAdapter) SubmitTask(ctx context.Context, task *ai3d.Task) (string, error) {
-	// 从 GenerationParams 提取混元参数
+	// 从 GenerationParams 提取混元参数（使用默认值填充）
+	model := getStringParam(task.GenerationParams, "model", a.config.DefaultModel)
+	generateType := getStringParam(task.GenerationParams, "generateType", a.config.DefaultGenerateType)
+	faceCount := getIntParam(task.GenerationParams, "faceCount", a.config.DefaultFaceCount)
+	enablePBR := getBoolParam(task.GenerationParams, "enablePbr", a.config.DefaultEnablePBR)
+	resultFormat := getStringParam(task.GenerationParams, "resultFormat", a.config.DefaultResultFormat)
+
+	// 构建API参数
 	params := &hunyuanService.GenerateParams{
-		Model:        getStringParam(task.GenerationParams, "model", a.config.DefaultModel),
-		GenerateType: getStringParam(task.GenerationParams, "generateType", a.config.DefaultGenerateType),
+		Model:        model,
+		GenerateType: generateType,
+		FaceCount:    &faceCount,
+		EnablePBR:    &enablePBR,
+		ResultFormat: &resultFormat,
 	}
 
-	// 设置面数
-	faceCount := getIntParam(task.GenerationParams, "faceCount", a.config.DefaultFaceCount)
-	params.FaceCount = &faceCount
-
-	// 设置PBR
-	enablePBR := getBoolParam(task.GenerationParams, "enablePbr", a.config.DefaultEnablePBR)
-	params.EnablePBR = &enablePBR
-
-	// 设置结果格式
-	resultFormat := getStringParam(task.GenerationParams, "resultFormat", a.config.DefaultResultFormat)
-	params.ResultFormat = &resultFormat
-
-	// 设置输入
+	// 设置输入（从临时字段获取图片数据）
 	if task.InputType == "text" && task.Prompt != nil {
 		params.Prompt = task.Prompt
 	} else if task.InputType == "image" {
-		if task.ImageURL != nil {
-			params.ImageURL = task.ImageURL
-		} else if task.ImageBase64 != nil {
-			params.ImageBase64 = task.ImageBase64
+		// 从GenerationParams临时获取图片数据
+		if imageURL, ok := task.GenerationParams["_imageUrl"].(string); ok && imageURL != "" {
+			params.ImageURL = &imageURL
+		} else if imageBase64, ok := task.GenerationParams["_imageBase64"].(string); ok && imageBase64 != "" {
+			params.ImageBase64 = &imageBase64
 		}
+	}
+
+	// 保存实际使用的参数到GenerationParams（不包括图片数据）
+	task.GenerationParams = ai3d.GenerationParams{
+		"model":        model,
+		"generateType": generateType,
+		"faceCount":    faceCount,
+		"enablePbr":    enablePBR,
+		"resultFormat": resultFormat,
 	}
 
 	// 调用混元API
