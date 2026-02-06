@@ -9,6 +9,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   BulbOutlined,
+  FolderOutlined,
 } from "@ant-design/icons-vue";
 
 const { Header, Sider, Content } = Layout;
@@ -35,6 +36,11 @@ export default defineComponent({
         key: "/texture-analysis",
         icon: () => <PictureOutlined />,
         label: <RouterLink to="/texture-analysis">贴图类型分析</RouterLink>,
+      },
+      {
+        key: "/projects",
+        icon: () => <FolderOutlined />,
+        label: <RouterLink to="/projects">项目管理</RouterLink>,
       },
       {
         key: "/about",

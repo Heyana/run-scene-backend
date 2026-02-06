@@ -50,6 +50,13 @@ func NewAppCore() (*AppCore, error) {
 		logger.Log.Infof("数据库版本配置加载成功，目标版本: %d", config.DatabaseVersion.GetTargetVersion())
 	}
 
+	// 加载项目管理配置
+	if err := config.LoadProjectConfig(); err != nil {
+		logger.Log.Warnf("加载项目管理配置失败: %v，将使用默认配置", err)
+	} else {
+		logger.Log.Info("项目管理配置加载成功")
+	}
+
 	// 初始化日志
 	logger.Init()
 	log := logger.GetLogger()

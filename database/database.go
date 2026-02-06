@@ -112,6 +112,9 @@ func RunMigrations() error {
 		&models.AssetMetadata{},
 		&models.AssetTag{},
 		&models.AssetMetrics{},
+		// 项目管理相关表
+		&models.Project{},
+		&models.ProjectVersion{},
 		// 注意：不再迁移旧的 hunyuan_tasks 和 meshy_tasks 表
 		// 它们已被合并到 ai3d_tasks 表中
 		// &hunyuan.HunyuanTask{},
@@ -146,6 +149,15 @@ func RunMigrations() error {
 		logger.Log.Warnf("创建资产库存储目录失败: %v", err)
 	} else {
 		logger.Log.Infof("资产库存储目录: %s", config.AppConfig.Asset.StorageDir)
+	}
+
+	// 创建项目管理存储目录
+	if config.ProjectAppConfig != nil {
+		if err := os.MkdirAll(config.ProjectAppConfig.StorageDir, 0755); err != nil {
+			logger.Log.Warnf("创建项目管理存储目录失败: %v", err)
+		} else {
+			logger.Log.Infof("项目管理存储目录: %s", config.ProjectAppConfig.StorageDir)
+		}
 	}
 
 	// 运行一次性升级任务

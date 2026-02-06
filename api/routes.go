@@ -44,6 +44,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	assetController := controllers.NewAssetController(database.MustGetDB())
 	imageController := controllers.NewImageController()
 	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
+	projectController := controllers.NewProjectController(database.MustGetDB())
 	
 	// 创建AI3D统一控制器（如果服务已初始化）
 	var ai3dUnifiedController *controllers.AI3DUnifiedController
@@ -366,6 +367,52 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		c.File(fullPath)
 	})
 
+	// 项目文件静态服务
+	projectDir := "./static/projects"
+	if config.ProjectAppConfig != nil && config.ProjectAppConfig.NASEnabled && config.ProjectAppConfig.NASPath != "" {
+		projectDir = config.ProjectAppConfig.NASPath
+		logger.Log.Infof("项目管理使用 NAS 路径提供静态文件服务: %s", projectDir)
+	} else {
+		logger.Log.Infof("项目管理使用本地路径提供静态文件服务: %s", projectDir)
+	}
+	
+	router.GET("/projects/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		fullPath := projectDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求项目文件: %s -> %s", filepath, fullPath)
+		
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("项目文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问项目文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("项目文件存在，大小: %d bytes", fileInfo.Size())
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -476,6 +523,19 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		{
 			blueprint.POST("/generate", blueprintController.Generate)   // 生成蓝图
 			blueprint.GET("/history", blueprintController.GetHistory)   // 获取生成历史
+		}
+
+		// 项目管理API
+		projects := api.Group("/projects")
+		{
+			projects.GET("", projectController.GetProjects)                          // 获取项目列表
+			projects.POST("", projectController.CreateProject)                       // 创建项目
+			projects.GET("/:id", projectController.GetProject)                       // 获取项目详情
+			projects.DELETE("/:id", projectController.DeleteProject)                 // 删除项目
+			projects.POST("/:id/versions", projectController.UploadVersion)          // 上传版本
+			projects.GET("/:id/versions", projectController.GetVersionHistory)       // 获取版本历史
+			projects.GET("/versions/:versionId/download", projectController.DownloadVersion) // 下载版本
+			projects.POST("/versions/:versionId/rollback", projectController.RollbackVersion) // 回滚版本
 		}
 
 		// TODO: 添加其他业务控制器和路由
