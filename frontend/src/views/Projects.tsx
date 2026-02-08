@@ -1,5 +1,5 @@
 import { defineComponent, ref, onMounted } from "vue";
-import { message, Modal } from "ant-design-vue";
+import { message, Modal, Image, Empty } from "ant-design-vue";
 import {
   Button,
   Input,
@@ -9,8 +9,6 @@ import {
   Select,
   SelectOption,
   Textarea,
-  Spin,
-  Empty,
   Popconfirm,
 } from "ant-design-vue";
 import {
@@ -23,6 +21,8 @@ import {
   FolderOutlined,
   ReloadOutlined,
 } from "@ant-design/icons-vue";
+import ResourceHeader from "@/components/ResourceHeader";
+import ResourceGrid from "@/components/ResourceGrid";
 import {
   getProjects,
   createProject,
@@ -35,8 +35,6 @@ import {
   type ProjectVersion,
 } from "@/api/projects";
 import "./Projects.less";
-
-const { Search } = Input;
 
 export default defineComponent({
   name: "Projects",
@@ -247,161 +245,163 @@ export default defineComponent({
       openPreview(project);
     };
 
+    // 搜索
+    const handleSearch = (value: string) => {
+      keyword.value = value;
+      page.value = 1;
+      loadProjects();
+    };
+
+    // 分页
+    const handlePageChange = (newPage: number, newPageSize: number) => {
+      page.value = newPage;
+      pageSize.value = newPageSize;
+      loadProjects();
+    };
+
+    // 分页大小变化
+    const handlePageSizeChange = (size: number) => {
+      pageSize.value = size;
+      page.value = 1;
+      loadProjects();
+    };
+
     onMounted(() => {
       loadProjects();
     });
 
     return () => (
-      <div class="projects-page">
-        {/* 顶部工具栏 */}
-        <div class="header-bar">
-          {/* 左侧统计 */}
-          <div class="stats-section">
-            <div class="stat-item">
-              <FolderOutlined class="stat-icon" />
-              <div class="stat-content">
-                <div class="stat-label">总项目数</div>
-                <div class="stat-value">{total.value}</div>
-              </div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-content">
-                <div class="stat-label">当前页</div>
-                <div class="stat-value">
-                  {page.value}/{Math.ceil(total.value / pageSize.value) || 1}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 右侧操作 */}
-          <div class="actions-section">
-            <Search
-              placeholder="搜索项目名称"
-              allowClear
-              onSearch={(value: string) => {
-                keyword.value = value;
-                page.value = 1;
-                loadProjects();
-              }}
-              style={{ width: 240 }}
-            />
-            <Select
-              value={pageSize.value}
-              onChange={(value: any) => {
-                pageSize.value = Number(value);
-                page.value = 1;
-                loadProjects();
-              }}
-              style={{ width: 110 }}
-              options={[
-                { label: "12 条/页", value: 12 },
-                { label: "24 条/页", value: 24 },
-                { label: "48 条/页", value: 48 },
-              ]}
-            />
-            <Button onClick={loadProjects} loading={loading.value}>
-              {{
-                icon: () => <ReloadOutlined />,
-                default: () => "刷新",
-              }}
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => (createDialogVisible.value = true)}
-            >
-              新建项目
-            </Button>
-          </div>
-        </div>
+      <div
+        style={{ padding: "24px", minHeight: "100vh", background: "#f5f5f5" }}
+      >
+        {/* 头部 */}
+        <ResourceHeader
+          stats={[
+            {
+              icon: FolderOutlined,
+              label: "总项目数",
+              value: total.value,
+              color: "#52c41a",
+            },
+          ]}
+          actions={[
+            {
+              label: "刷新",
+              icon: ReloadOutlined,
+              loading: loading.value,
+              onClick: loadProjects,
+            },
+            {
+              label: "新建项目",
+              icon: PlusOutlined,
+              type: "primary",
+              onClick: () => (createDialogVisible.value = true),
+            },
+          ]}
+          onSearch={handleSearch}
+          searchPlaceholder="搜索项目名称"
+          pageSize={pageSize.value}
+          onPageSizeChange={handlePageSizeChange}
+        />
 
         {/* 项目网格 */}
-        <Spin spinning={loading.value}>
-          {projects.value.length === 0 ? (
-            <div class="empty-container">
-              <Empty description="暂无项目数据" />
-            </div>
-          ) : (
-            <div class="project-grid">
-              {projects.value.map((project: Project) => (
-                <div key={project.id} class="project-card">
-                  {/* 预览图区域 - 点击打开项目 */}
-                  <div
-                    class="project-preview"
-                    onClick={() => handleCardClick(project)}
-                  >
-                    {project.thumbnail_url ? (
-                      <img src={project.thumbnail_url} alt={project.name} />
-                    ) : (
-                      <div class="preview-placeholder">
-                        <FolderOutlined />
-                        <div class="preview-text">点击打开项目</div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 项目信息 */}
-                  <div class="project-info">
-                    <div class="project-name" title={project.name}>
-                      {project.name}
-                    </div>
-                    <div
-                      class="project-description"
-                      title={project.description}
-                    >
-                      {project.description || "暂无描述"}
-                    </div>
-
-                    {/* 版本信息 */}
-                    <div class="project-meta">
-                      <Tag color="blue">v{project.current_version}</Tag>
-                      <span class="update-time">
-                        {new Date(project.updated_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {/* 操作按钮 */}
-                    <div class="project-actions">
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<UploadOutlined />}
-                        onClick={(e: Event) => {
-                          e.stopPropagation();
-                          openUploadDialog(project);
-                        }}
-                      >
-                        上传版本
-                      </Button>
-                      <Button
-                        size="small"
-                        icon={<HistoryOutlined />}
-                        onClick={(e: Event) => {
-                          e.stopPropagation();
-                          viewHistory(project);
-                        }}
-                      >
-                        历史
-                      </Button>
-                      <Popconfirm
-                        title="确定删除该项目吗？"
-                        onConfirm={() => handleDelete(project.id)}
-                      >
-                        <Button
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={(e: Event) => e.stopPropagation()}
-                        />
-                      </Popconfirm>
-                    </div>
-                  </div>
+        <ResourceGrid
+          loading={loading.value}
+          data={projects.value}
+          total={total.value}
+          currentPage={page.value}
+          pageSize={pageSize.value}
+          onPageChange={handlePageChange}
+          onCardClick={handleCardClick}
+          renderPreview={(project) => {
+            if (project.thumbnail_url) {
+              return (
+                <Image
+                  src={project.thumbnail_url}
+                  width="100%"
+                  height="100%"
+                  style={{ objectFit: "cover" }}
+                  preview={{ src: project.thumbnail_url }}
+                />
+              );
+            }
+            return (
+              <div class="preview-placeholder">
+                <FolderOutlined />
+                <div style={{ marginTop: "8px", fontSize: "12px" }}>
+                  点击打开项目
                 </div>
-              ))}
-            </div>
+              </div>
+            );
+          }}
+          renderContent={(project) => (
+            <>
+              <div class="resource-name" title={project.name}>
+                {project.name}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "#999",
+                  marginTop: "4px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={project.description}
+              >
+                {project.description || "暂无描述"}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                  marginTop: "8px",
+                }}
+              >
+                <Tag color="blue">v{project.current_version}</Tag>
+                <span style={{ fontSize: "12px", color: "#666" }}>
+                  {new Date(project.updated_at).toLocaleDateString()}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<UploadOutlined />}
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    openUploadDialog(project);
+                  }}
+                >
+                  上传
+                </Button>
+                <Button
+                  size="small"
+                  icon={<HistoryOutlined />}
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    viewHistory(project);
+                  }}
+                >
+                  历史
+                </Button>
+                <Popconfirm
+                  title="确定删除该项目吗？"
+                  onConfirm={() => handleDelete(project.id)}
+                >
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={(e: Event) => e.stopPropagation()}
+                  />
+                </Popconfirm>
+              </div>
+            </>
           )}
-        </Spin>
+        />
 
         {/* 版本历史对话框 */}
         <Modal
@@ -540,8 +540,7 @@ export default defineComponent({
               <input
                 ref={fileInputRef}
                 type="file"
-                webkitdirectory=""
-                directory=""
+                {...{ webkitdirectory: "", directory: "" }}
                 multiple
                 onChange={handleFolderSelect}
                 style={{ display: "block" }}

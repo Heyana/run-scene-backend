@@ -44,11 +44,18 @@ func GenerateScreenshot(url string, outputPath string, opts *ScreenshotOptions) 
 	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
 	defer cancel()
 
+	// 创建临时用户数据目录
+	userDataDir := filepath.Join(os.TempDir(), "chromium-screenshot")
+	os.MkdirAll(userDataDir, 0755)
+
 	// 创建 chromedp context，禁用 CSP 和其他安全限制
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("disable-web-security", true),           // 禁用 web 安全
 		chromedp.Flag("disable-features", "IsolateOrigins,site-per-process"), // 禁用站点隔离
 		chromedp.Flag("disable-blink-features", "AutomationControlled"),      // 隐藏自动化特征
+		chromedp.Flag("user-data-dir", userDataDir),           // 设置用户数据目录
+		chromedp.Flag("no-sandbox", true),                     // 禁用沙箱（Linux 服务器需要）
+		chromedp.Flag("disable-dev-shm-usage", true),          // 禁用 /dev/shm 使用
 	)
 	
 	allocCtx, allocCancel := chromedp.NewExecAllocator(ctx, allocOpts...)
@@ -93,11 +100,18 @@ func GenerateThumbnail(url string, outputPath string, width, height int64) error
 	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
 	defer cancel()
 
+	// 创建临时用户数据目录
+	userDataDir := filepath.Join(os.TempDir(), "chromium-screenshot")
+	os.MkdirAll(userDataDir, 0755)
+
 	// 创建 chromedp context，禁用 CSP 和其他安全限制
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("disable-web-security", true),           // 禁用 web 安全
 		chromedp.Flag("disable-features", "IsolateOrigins,site-per-process"), // 禁用站点隔离
 		chromedp.Flag("disable-blink-features", "AutomationControlled"),      // 隐藏自动化特征
+		chromedp.Flag("user-data-dir", userDataDir),           // 设置用户数据目录
+		chromedp.Flag("no-sandbox", true),                     // 禁用沙箱（Linux 服务器需要）
+		chromedp.Flag("disable-dev-shm-usage", true),          // 禁用 /dev/shm 使用
 	)
 	
 	allocCtx, allocCancel := chromedp.NewExecAllocator(ctx, allocOpts...)

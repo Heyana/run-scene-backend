@@ -216,3 +216,47 @@
     }
   }
 }
+
+// 活动列表
+.activity-list {
+  .activity-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .activity-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+
+      .activity-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .activity-action {
+        font-size: 12px;
+        color: #999;
+        padding: 2px 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+      }
+    }
+
+    .activity-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #999;
+
+      .activity-user {
+        color: #666;
+      }
+    }
+  }
+}

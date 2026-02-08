@@ -1,0 +1,27 @@
+# AI配置文件
+# 支持 DeepSeek 和 OpenAI
+
+ai:
+  # 使用的AI提供商: "deepseek" | "openai"
+  provider: "deepseek"
+
+  # DeepSeek配置
+  deepseek:
+    api_key: "sk-cbe0a393d690422689416f969ac9df76" # 填写你的DeepSeek API Key，或使用环境变量 DEEPSEEK_API_KEY
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com/v1"
+    temperature: 0.7
+    max_tokens: 4000
+
+  # OpenAI配置
+  openai:
+    api_key: "" # 填写你的OpenAI API Key，或使用环境变量 OPENAI_API_KEY
+    model: "gpt-4"
+    base_url: "https://api.openai.com/v1"
+    temperature: 0.7
+    max_tokens: 4000
+
+  # 通用配置
+  max_retries: 3 # 最大重试次数
+  retry_interval: 5 # 重试间隔（秒）
+  timeout: 60 # 请求超时（秒）

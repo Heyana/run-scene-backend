@@ -1,0 +1,28 @@
+# 项目管理配置
+project:
+  # 本地存储配置
+  local_storage_enabled: false
+  storage_dir: "static/projects"
+
+  # 网络访问配置
+  base_url: "http://192.168.3.10:23359/projects"
+
+  # NAS存储配置
+  nas_enabled: true # 是否启用 NAS 存储
+  nas_path: "/vol1/1003/project/editor_v2/static/projects" # NAS 路径（Linux 格式）
+
+  # 文件限制
+  max_file_size: 524288000 # 500MB
+  max_project_size: 1073741824 # 1GB
+
+  # 版本配置
+  default_initial_version: "1.0.0"
+  version_format: "semantic"
+
+  # 压缩配置
+  enable_compression: true
+  compression_format: "zip"
+
+  # 预览配置
+  preview_enabled: true
+  preview_index_file: "index.html" # 默认入口文件

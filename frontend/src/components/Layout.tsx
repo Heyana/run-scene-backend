@@ -10,6 +10,9 @@ import {
   MenuUnfoldOutlined,
   BulbOutlined,
   FolderOutlined,
+  BoxPlotOutlined,
+  FileImageOutlined,
+  RocketOutlined,
 } from "@ant-design/icons-vue";
 
 const { Header, Sider, Content } = Layout;
@@ -41,6 +44,21 @@ export default defineComponent({
         key: "/projects",
         icon: () => <FolderOutlined />,
         label: <RouterLink to="/projects">项目管理</RouterLink>,
+      },
+      {
+        key: "/models",
+        icon: () => <BoxPlotOutlined />,
+        label: <RouterLink to="/models">模型库</RouterLink>,
+      },
+      {
+        key: "/assets",
+        icon: () => <FileImageOutlined />,
+        label: <RouterLink to="/assets">资产库</RouterLink>,
+      },
+      {
+        key: "/ai3d",
+        icon: () => <RocketOutlined />,
+        label: <RouterLink to="/ai3d">AI 3D</RouterLink>,
       },
       {
         key: "/about",

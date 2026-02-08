@@ -45,6 +45,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	imageController := controllers.NewImageController()
 	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
 	projectController := controllers.NewProjectController(database.MustGetDB())
+	statisticsController := controllers.NewStatisticsController(database.MustGetDB())
 	
 	// 创建AI3D统一控制器（如果服务已初始化）
 	var ai3dUnifiedController *controllers.AI3DUnifiedController
@@ -578,6 +579,14 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			projects.GET("/:id/versions", projectController.GetVersionHistory)       // 获取版本历史
 			projects.GET("/versions/:versionId/download", projectController.DownloadVersion) // 下载版本
 			projects.POST("/versions/:versionId/rollback", projectController.RollbackVersion) // 回滚版本
+		}
+
+		// 统计API
+		statistics := api.Group("/statistics")
+		{
+			statistics.GET("/overview", statisticsController.GetOverview)                   // 获取统计概览
+			statistics.GET("/recent-activities", statisticsController.GetRecentActivities) // 获取最近活动
+			statistics.GET("/system-status", statisticsController.GetSystemStatus)         // 获取系统状态
 		}
 
 		// TODO: 添加其他业务控制器和路由

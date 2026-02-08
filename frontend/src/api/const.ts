@@ -5,14 +5,13 @@ const isDev =
 const mode = import.meta.env.MODE || "production";
 
 // API 基础地址配置
-const pubUrl = "https://api-xishu.show.linktwins.com/";
+const pubUrl = "http://192.168.3.10:23359/";
 // API 基础地址配置
 const getBaseUrl = () => {
-  // return pubUrl;
+  return pubUrl;
   // 默认配置
   return isDev ? "http://192.168.3.39:23359/" : pubUrl;
 };
-
 const base = getBaseUrl();
 export const constApiBasePrefix = base;
 

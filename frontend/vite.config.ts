@@ -25,6 +25,7 @@ export default defineConfig({
       },
     },
   },
+  base: "./",
   css: {
     preprocessorOptions: {
       less: {

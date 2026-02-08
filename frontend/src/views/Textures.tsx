@@ -1,28 +1,16 @@
 import { defineComponent, onMounted, ref } from "vue";
 import { useTextureStore } from "@/stores/texture";
+import { Tag, Image } from "ant-design-vue";
 import {
-  Button,
-  Input,
-  Tag,
-  Spin,
-  Alert,
-  Image,
-  Select,
-  Pagination,
-  Empty,
-} from "ant-design-vue";
-import {
-  ReloadOutlined,
-  SearchOutlined,
-  SyncOutlined,
   PictureOutlined,
+  SyncOutlined,
   EyeOutlined,
   DownloadOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons-vue";
+import ResourceHeader from "@/components/ResourceHeader";
+import ResourceGrid from "@/components/ResourceGrid";
 import type { TextureFile } from "@/api/models/texture";
-import "./Textures.less";
-
-const { Search } = Input;
 
 export default defineComponent({
   name: "Textures",
@@ -31,33 +19,23 @@ export default defineComponent({
     const keyword = ref("");
     const syncStatus = ref<number | undefined>(undefined);
     const currentPage = ref(1);
-    const pageSize = ref(16);
+    const pageSize = ref(14);
 
     // 获取预览图 URL
     const getPreviewUrl = (files?: TextureFile[]) => {
       if (!files || files.length === 0) return "";
-
-      // 优先查找 preview 类型的文件
       const preview = files.find((f) => f.file_type === "thumbnail");
-      if (preview && preview.full_url) {
-        return preview.full_url;
-      }
-
-      // 否则返回第一个图片文件
+      if (preview && preview.full_url) return preview.full_url;
       const firstImage = files.find((f) =>
         ["jpg", "jpeg", "png", "webp"].includes(f.format?.toLowerCase()),
       );
-      if (firstImage && firstImage.full_url) {
-        return firstImage.full_url;
-      }
-
+      if (firstImage && firstImage.full_url) return firstImage.full_url;
       return "";
     };
 
     // 获取所有图片 URL（用于预览组）
     const getAllImageUrls = (files?: TextureFile[]) => {
       if (!files || files.length === 0) return [];
-
       return files
         .filter((f) =>
           ["jpg", "jpeg", "png", "webp"].includes(f.format?.toLowerCase()),
@@ -69,7 +47,6 @@ export default defineComponent({
     // 获取其他文件（排除缩略图）
     const getOtherFiles = (files?: TextureFile[]) => {
       if (!files || files.length === 0) return [];
-
       return files.filter((f: TextureFile) => {
         if (f.file_type === "thumbnail") return false;
         return ["jpg", "jpeg", "png", "webp"].includes(f.format?.toLowerCase());
@@ -114,6 +91,12 @@ export default defineComponent({
       loadData();
     };
 
+    const handlePageSizeChange = (size: number) => {
+      pageSize.value = size;
+      currentPage.value = 1;
+      loadData();
+    };
+
     const handleSync = async () => {
       await textureStore.triggerSync();
       loadData();
@@ -124,239 +107,183 @@ export default defineComponent({
     });
 
     return () => (
-      <div class="textures-page">
-        {/* 错误提示 */}
-        {textureStore.error && (
-          <Alert
-            message="加载失败"
-            description={textureStore.error}
-            type="error"
-            closable
-            onClose={() => (textureStore.error = null)}
-            style={{ marginBottom: "16px" }}
-          />
-        )}
-
-        {/* 顶部工具栏（统计 + 操作） */}
-        <div class="header-bar">
-          {/* 左侧：统计信息 */}
-          <div class="stats-section">
-            <div class="stat-item">
-              <PictureOutlined class="stat-icon" />
-              <div class="stat-content">
-                <div class="stat-label">总材质数</div>
-                <div class="stat-value">{textureStore.textureCount}</div>
-              </div>
-            </div>
-            <div class="stat-item">
-              <SyncOutlined
-                class={["stat-icon", textureStore.loading && "spinning"]}
-              />
-              <div class="stat-content">
-                <div class="stat-label">同步状态</div>
-                <div
-                  class="stat-value"
-                  style={{
-                    color: textureStore.loading ? "#1890ff" : "#52c41a",
-                  }}
-                >
-                  {textureStore.loading ? "同步中" : "就绪"}
-                </div>
-              </div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-content">
-                <div class="stat-label">当前页</div>
-                <div class="stat-value">
-                  {currentPage.value}/
-                  {Math.ceil(textureStore.textureCount / pageSize.value) || 1}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 右侧：操作区 */}
-          <div class="actions-section">
-            <Search
-              placeholder="搜索材质名称"
-              allowClear
-              onSearch={handleSearch}
-              style={{ width: 240 }}
-              v-slots={{
-                enterButton: () => <SearchOutlined />,
-              }}
-            />
-            <Select
-              placeholder="同步状态"
-              allowClear
-              value={syncStatus.value}
-              onChange={handleStatusChange}
-              style={{ width: 130 }}
-              options={[
+      <div
+        style={{ padding: "24px", minHeight: "100vh", background: "#f5f5f5" }}
+      >
+        {/* 头部 */}
+        <ResourceHeader
+          stats={[
+            {
+              icon: PictureOutlined,
+              label: "总材质数",
+              value: textureStore.textureCount,
+              color: "#52c41a",
+            },
+            {
+              icon: SyncOutlined,
+              label: "同步状态",
+              value: textureStore.loading ? "同步中" : "就绪",
+              color: textureStore.loading ? "#1890ff" : "#52c41a",
+            },
+          ]}
+          actions={[
+            {
+              label: "刷新",
+              icon: ReloadOutlined,
+              loading: textureStore.loading,
+              onClick: loadData,
+            },
+            {
+              label: "触发同步",
+              icon: SyncOutlined,
+              type: "primary",
+              loading: textureStore.loading,
+              onClick: handleSync,
+            },
+          ]}
+          onSearch={handleSearch}
+          searchPlaceholder="搜索材质名称"
+          filters={[
+            {
+              label: "同步状态",
+              value: syncStatus.value,
+              options: [
                 { label: "全部", value: undefined },
                 { label: "未同步", value: 0 },
                 { label: "同步中", value: 1 },
                 { label: "已同步", value: 2 },
                 { label: "失败", value: 3 },
-              ]}
-            />
-            <Select
-              value={pageSize.value}
-              onChange={(value: any) => {
-                pageSize.value = Number(value);
-                currentPage.value = 1;
-                loadData();
-              }}
-              style={{ width: 110 }}
-              options={[
-                { label: "12 条/页", value: 12 },
-                { label: "24 条/页", value: 24 },
-                { label: "48 条/页", value: 48 },
-                { label: "96 条/页", value: 96 },
-              ]}
-            />
-            <Button onClick={loadData} loading={textureStore.loading}>
-              {{
-                icon: () => <ReloadOutlined />,
-                default: () => "刷新",
-              }}
-            </Button>
-            <Button
-              type="primary"
-              onClick={handleSync}
-              loading={textureStore.loading}
-            >
-              {{
-                icon: () => <SyncOutlined />,
-                default: () => "触发同步",
-              }}
-            </Button>
-          </div>
-        </div>
+              ],
+              onChange: handleStatusChange,
+            },
+          ]}
+          pageSize={pageSize.value}
+          onPageSizeChange={handlePageSizeChange}
+        />
 
-        {/* 材质网格 */}
-        <Spin spinning={textureStore.loading}>
-          {textureStore.textures.length === 0 ? (
-            <div class="empty-container">
-              <Empty description="暂无材质数据" />
-            </div>
-          ) : (
-            <>
-              <div class="texture-grid">
-                {textureStore.textures.map((texture: any) => {
-                  const previewUrl = getPreviewUrl(texture.files);
-                  const allImages = getAllImageUrls(texture.files);
-                  const otherFiles = getOtherFiles(texture.files);
-                  const statusConfig = getStatusConfig(texture.sync_status);
-
-                  return (
-                    <div key={texture.id} class="texture-card">
-                      {/* 预览图 */}
-                      <div class="texture-preview">
-                        {previewUrl ? (
-                          <Image.PreviewGroup>
-                            <Image
-                              src={previewUrl}
-                              width="100%"
-                              height="100%"
-                              style={{ objectFit: "cover" }}
-                              preview={{ src: previewUrl }}
-                            />
-                            {allImages.slice(1).map((url, index) => (
-                              <Image
-                                key={index}
-                                src={url}
-                                style={{ display: "none" }}
-                                preview={{ src: url }}
-                              />
-                            ))}
-                          </Image.PreviewGroup>
-                        ) : (
-                          <div class="preview-placeholder">
-                            <PictureOutlined />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 材质信息 */}
-                      <div class="texture-info">
-                        <div class="texture-name" title={texture.name}>
-                          {texture.name}
-                        </div>
-                        <div class="texture-id" title={texture.asset_id}>
-                          {texture.asset_id}
-                        </div>
-
-                        {/* 状态和分辨率 */}
-                        <div class="texture-meta">
-                          <Tag color={statusConfig.color}>
-                            {statusConfig.text}
-                          </Tag>
-                          <span class="resolution">
-                            {texture.max_resolution}
-                          </span>
-                        </div>
-
-                        {/* 统计信息 */}
-                        <div class="texture-stats">
-                          <div class="stats-left">
-                            <span class="stat">
-                              <EyeOutlined /> {texture.use_count}
-                            </span>
-                            <span class="stat">
-                              <DownloadOutlined /> {texture.download_count}
-                            </span>
-                          </div>
-                          <span class="stat">
-                            <PictureOutlined /> {otherFiles.length}
-                          </span>
-                        </div>
-
-                        {/* 其他文件缩略图 */}
-                        {otherFiles.length > 0 && (
-                          <div class="other-files">
-                            {otherFiles.slice(0, 4).map((file: TextureFile) => (
-                              <Image
-                                key={file.id}
-                                src={file.full_url}
-                                width={40}
-                                height={40}
-                                style={{
-                                  objectFit: "cover",
-                                  borderRadius: "4px",
-                                  cursor: "pointer",
-                                }}
-                                preview={{ src: file.full_url }}
-                              />
-                            ))}
-                            {otherFiles.length > 4 && (
-                              <div class="more-files">
-                                +{otherFiles.length - 4}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* 网格 */}
+        <ResourceGrid
+          loading={textureStore.loading}
+          data={textureStore.textures}
+          total={textureStore.textureCount}
+          currentPage={currentPage.value}
+          pageSize={pageSize.value}
+          onPageChange={handlePageChange}
+          renderPreview={(texture) => {
+            const previewUrl = getPreviewUrl(texture.files);
+            const allImages = getAllImageUrls(texture.files);
+            if (previewUrl) {
+              return (
+                <Image.PreviewGroup>
+                  <Image
+                    src={previewUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ objectFit: "cover" }}
+                    preview={{ src: previewUrl }}
+                  />
+                  {allImages.slice(1).map((url, index) => (
+                    <Image
+                      key={index}
+                      src={url}
+                      style={{ display: "none" }}
+                      preview={{ src: url }}
+                    />
+                  ))}
+                </Image.PreviewGroup>
+              );
+            }
+            return (
+              <div class="preview-placeholder">
+                <PictureOutlined />
               </div>
-
-              {/* 分页 */}
-              <div class="pagination-container">
-                <Pagination
-                  current={currentPage.value}
-                  pageSize={pageSize.value}
-                  total={textureStore.textureCount}
-                  showSizeChanger={false}
-                  showQuickJumper
-                  showTotal={(total: number) => `共 ${total} 条`}
-                  onChange={handlePageChange}
-                />
-              </div>
-            </>
-          )}
-        </Spin>
+            );
+          }}
+          renderContent={(texture) => {
+            const statusConfig = getStatusConfig(texture.sync_status);
+            const otherFiles = getOtherFiles(texture.files);
+            return (
+              <>
+                <div class="resource-name" title={texture.name}>
+                  {texture.name}
+                </div>
+                <div
+                  style={{ fontSize: "12px", color: "#999", marginTop: "4px" }}
+                >
+                  {texture.asset_id}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    marginTop: "8px",
+                  }}
+                >
+                  <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {texture.max_resolution}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: "8px",
+                    fontSize: "12px",
+                    color: "#999",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <span>
+                      <EyeOutlined /> {texture.use_count}
+                    </span>
+                    <span>
+                      <DownloadOutlined /> {texture.download_count}
+                    </span>
+                  </div>
+                  <span>
+                    <PictureOutlined /> {otherFiles.length}
+                  </span>
+                </div>
+                {otherFiles.length > 0 && (
+                  <div
+                    style={{ display: "flex", gap: "4px", marginTop: "8px" }}
+                  >
+                    {otherFiles.slice(0, 4).map((file: TextureFile) => (
+                      <Image
+                        key={file.id}
+                        src={file.full_url}
+                        width={40}
+                        height={40}
+                        style={{ objectFit: "cover", borderRadius: "4px" }}
+                        preview={{ src: file.full_url }}
+                      />
+                    ))}
+                    {otherFiles.length > 4 && (
+                      <div
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          borderRadius: "4px",
+                          background: "#f0f0f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "12px",
+                          color: "#666",
+                        }}
+                      >
+                        +{otherFiles.length - 4}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          }}
+        />
       </div>
     );
   },

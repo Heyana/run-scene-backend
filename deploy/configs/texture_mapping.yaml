@@ -4,6 +4,7 @@
 threejs:
   # 基础颜色贴图 (map)
   map:
+    # PolyHaven 类型
     - Diffuse
     - diff_png
     - col
@@ -11,34 +12,51 @@ threejs:
     - col2
     - coll1
     - coll2
+    # AmbientCG 类型 (包含 Color 后缀的)
+    - Color # 匹配所有 *_Color 类型
 
   # 法线贴图 (normalMap)
   normalMap:
+    # PolyHaven 类型
     - nor_dx
     - nor_gl
     - normal_dx
     - normal_gl
+    # AmbientCG 类型
+    - NormalDX # 匹配所有 *_NormalDX 类型
+    - NormalGL # 匹配所有 *_NormalGL 类型
 
   # 粗糙度贴图 (roughnessMap)
   roughnessMap:
+    # PolyHaven 类型
     - Rough
     - rough_ao
     - rough_diff
+    # AmbientCG 类型
+    - Roughness # 匹配所有 *_Roughness 类型
 
   # 金属度贴图 (metalnessMap)
   metalnessMap:
+    # PolyHaven 类型
     - Metal
     - me_arm
+    # AmbientCG 类型
+    - Metalness # 匹配所有 *_Metalness 类型
 
   # 环境光遮蔽贴图 (aoMap)
   aoMap:
+    # PolyHaven 类型
     - AO
     - arm
+    # AmbientCG 类型
+    - AmbientOcclusion # 匹配所有 *_AmbientOcclusion 类型
 
   # 位移贴图 (displacementMap)
   displacementMap:
+    # PolyHaven 类型
     - Displacement
     - Bump
+    # AmbientCG 类型已包含在 Displacement 中
 
   # 高光贴图 (specularMap)
   specularMap:
@@ -47,8 +65,11 @@ threejs:
 
   # 透明度贴图 (alphaMap)
   alphaMap:
+    # PolyHaven 类型
     - Mask
     - translucent
+    # AmbientCG 类型
+    - Opacity # 匹配所有 *_Opacity 类型
 
   # 各向异性贴图 (anisotropyMap)
   anisotropyMap:
