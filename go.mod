@@ -6,13 +6,17 @@ toolchain go1.24.0
 
 require (
 	github.com/HugoSmits86/nativewebp v1.2.0
+	github.com/chromedp/chromedp v0.11.2
+	github.com/disintegration/imaging v1.6.2
 	github.com/gin-contrib/requestid v1.0.5
 	github.com/gin-gonic/gin v1.10.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/jlaffaye/ftp v0.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/sirupsen/logrus v1.9.3
+	github.com/studio-b12/gowebdav v0.11.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.8.12
@@ -23,12 +27,13 @@ require (
 )
 
 require (
-	github.com/chai2010/webp v1.4.0 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
+	github.com/chromedp/cdproto v0.0.0-20241022234722-4d5d5faf59fb // indirect
+	github.com/chromedp/sysutil v1.1.0 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/jlaffaye/ftp v0.2.0 // indirect
-	github.com/studio-b12/gowebdav v0.11.0 // indirect
 )
 
 require (
@@ -50,7 +55,7 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -71,7 +76,7 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.17.0 // indirect
 	golang.org/x/crypto v0.40.0
-	golang.org/x/image v0.30.0 // indirect
+	golang.org/x/image v0.30.0
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect

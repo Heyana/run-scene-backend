@@ -5,8 +5,10 @@ import (
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/models"
 	"go_wails_project_manager/utils"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -195,5 +197,93 @@ func (ps *ProjectService) UploadVersion(projectID uint, username, description, v
 		return nil, err
 	}
 
+	// 10. 异步生成预览截图
+	go ps.generateScreenshotAsync(version)
+
 	return version, nil
+}
+
+// generateScreenshotAsync 异步生成预览截图
+func (ps *ProjectService) generateScreenshotAsync(version *models.ProjectVersion) {
+	// 构建预览URL
+	previewURL := buildLocalPreviewURL(version.ExtractedPath)
+	if previewURL == "" {
+		log.Printf("版本 %d 没有预览URL，跳过截图", version.ID)
+		return
+	}
+
+	// 生成缩略图路径
+	thumbnailPath := filepath.Join(version.ExtractedPath, "thumbnail.png")
+
+	log.Printf("开始为版本 %d 生成预览截图: %s", version.ID, previewURL)
+
+	// 生成缩略图（1200x800）
+	if err := utils.GenerateThumbnail(previewURL, thumbnailPath, 1200, 800); err != nil {
+		log.Printf("生成预览截图失败 (版本 %d): %v", version.ID, err)
+		return
+	}
+
+	log.Printf("预览截图生成成功: %s", thumbnailPath)
+
+	// 更新版本记录的缩略图路径
+	if err := ps.db.Model(version).Update("thumbnail_path", thumbnailPath).Error; err != nil {
+		log.Printf("更新版本缩略图路径失败 (版本 %d): %v", version.ID, err)
+		return
+	}
+
+	// 同时更新项目表的缩略图（使用最新版本的截图）
+	if err := ps.db.Model(&models.Project{}).Where("id = ?", version.ProjectID).Update("thumbnail_path", thumbnailPath).Error; err != nil {
+		log.Printf("更新项目缩略图路径失败 (项目 %d): %v", version.ProjectID, err)
+		return
+	}
+
+	log.Printf("版本 %d 的预览截图已保存到数据库，并更新到项目 %d", version.ID, version.ProjectID)
+}
+
+// buildLocalPreviewURL 构建本地预览URL（用于截图）
+func buildLocalPreviewURL(extractedPath string) string {
+	if extractedPath == "" {
+		return ""
+	}
+
+	// 检查 index.html 是否存在
+	indexPath := filepath.Join(extractedPath, "index.html")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		return ""
+	}
+
+	// 统一路径分隔符
+	path := filepath.ToSlash(extractedPath)
+	
+	// 提取相对路径（从 projects/ 之后的部分）
+	projectsIdx := strings.LastIndex(path, "/projects/")
+	if projectsIdx == -1 {
+		projectsIdx = strings.LastIndex(path, "projects/")
+		if projectsIdx != -1 {
+			projectsIdx += len("projects/")
+		}
+	} else {
+		projectsIdx += len("/projects/")
+	}
+	
+	var relativePath string
+	if projectsIdx != -1 {
+		relativePath = path[projectsIdx:]
+	} else {
+		// 如果找不到 projects/，使用最后两段路径
+		parts := strings.Split(path, "/")
+		if len(parts) >= 2 {
+			relativePath = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+		} else {
+			relativePath = path
+		}
+	}
+
+	// 构建完整的预览URL
+	if config.ProjectAppConfig != nil && config.ProjectAppConfig.BaseURL != "" {
+		baseURL := strings.TrimSuffix(config.ProjectAppConfig.BaseURL, "/")
+		return fmt.Sprintf("%s/%s/index.html", baseURL, relativePath)
+	}
+
+	return ""
 }

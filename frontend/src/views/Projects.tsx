@@ -1,20 +1,17 @@
-import { defineComponent, ref, onMounted, computed } from "vue";
+import { defineComponent, ref, onMounted } from "vue";
 import { message, Modal } from "ant-design-vue";
 import {
-  Card,
   Button,
   Input,
-  Table,
-  Space,
   Tag,
-  Popconfirm,
   Form,
   FormItem,
   Select,
   SelectOption,
   Textarea,
-  Upload,
-  Progress,
+  Spin,
+  Empty,
+  Popconfirm,
 } from "ant-design-vue";
 import {
   PlusOutlined,
@@ -23,6 +20,8 @@ import {
   DeleteOutlined,
   EyeOutlined,
   DownloadOutlined,
+  FolderOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons-vue";
 import {
   getProjects,
@@ -35,6 +34,9 @@ import {
   type Project,
   type ProjectVersion,
 } from "@/api/projects";
+import "./Projects.less";
+
+const { Search } = Input;
 
 export default defineComponent({
   name: "Projects",
@@ -43,7 +45,7 @@ export default defineComponent({
     const loading = ref(false);
     const total = ref(0);
     const page = ref(1);
-    const pageSize = ref(20);
+    const pageSize = ref(12);
     const keyword = ref("");
 
     // 创建项目对话框
@@ -62,7 +64,6 @@ export default defineComponent({
       version_type: "patch" as "major" | "minor" | "patch",
       files: [] as File[],
     });
-    const uploadProgress = ref(0);
     const uploading = ref(false);
 
     // 文件input的引用
@@ -137,21 +138,6 @@ export default defineComponent({
       const input = e.target as HTMLInputElement;
       if (input.files && input.files.length > 0) {
         uploadForm.value.files = Array.from(input.files);
-
-        // 打印前几个文件的路径信息用于调试
-        console.log("=== 文件夹选择调试信息 ===");
-        console.log("文件总数:", input.files.length);
-        for (let i = 0; i < Math.min(20, input.files.length); i++) {
-          const file = input.files[i];
-          console.log(`文件 ${i + 1}:`);
-          console.log("  name:", file.name);
-          console.log(
-            "  webkitRelativePath:",
-            (file as any).webkitRelativePath,
-          );
-        }
-        console.log("========================");
-
         message.success(`已选择 ${input.files.length} 个文件`);
       }
     };
@@ -168,7 +154,6 @@ export default defineComponent({
       }
 
       uploading.value = true;
-      uploadProgress.value = 0;
 
       try {
         const formData = new FormData();
@@ -176,35 +161,17 @@ export default defineComponent({
         formData.append("description", uploadForm.value.description);
         formData.append("version_type", uploadForm.value.version_type);
 
-        // 添加所有文件
-        console.log("=== 上传文件调试信息 ===");
-
         // 收集所有文件路径
         const filePaths: string[] = [];
 
-        uploadForm.value.files.forEach((file: File, index: number) => {
+        uploadForm.value.files.forEach((file: File) => {
           const relativePath = (file as any).webkitRelativePath || file.name;
           filePaths.push(relativePath);
-
-          // 打印前几个文件的信息
-          if (index < 5) {
-            console.log(`文件 ${index + 1}:`);
-            console.log("  name:", file.name);
-            console.log(
-              "  webkitRelativePath:",
-              (file as any).webkitRelativePath,
-            );
-            console.log("  使用的路径:", relativePath);
-          }
-
-          // 只传文件，不传文件名
           formData.append("files", file);
         });
 
         // 将所有文件路径作为JSON字符串传递
         formData.append("file_paths", JSON.stringify(filePaths));
-        console.log("文件路径列表:", filePaths.slice(0, 5));
-        console.log("========================");
 
         await uploadVersion(uploadForm.value.project_id, formData);
         message.success("上传成功");
@@ -230,7 +197,6 @@ export default defineComponent({
         console.error("上传错误:", error);
       } finally {
         uploading.value = false;
-        uploadProgress.value = 0;
       }
     };
 
@@ -259,148 +225,87 @@ export default defineComponent({
     };
 
     // 打开预览
-    const openPreview = (version: ProjectVersion) => {
-      if (version.preview_url) {
-        window.open(version.preview_url, "_blank");
-      } else {
-        message.warning("该版本没有预览页面");
+    const openPreview = (project: Project) => {
+      // 如果有缩略图URL，从中提取 baseURL
+      // 否则使用默认的后端地址
+      let baseURL = "http://192.168.3.39:23359";
+
+      if (project.thumbnail_url) {
+        // 从 thumbnail_url 中提取 baseURL
+        // 例如: http://192.168.3.39:23359/projects/123/v1.0.6/thumbnail.png
+        const url = new URL(project.thumbnail_url);
+        baseURL = `${url.protocol}//${url.host}`;
       }
+
+      // 构建项目根路径，后端会自动重定向到最新版本
+      const projectURL = `${baseURL}/projects/${project.name}/`;
+      window.open(projectURL, "_blank");
     };
 
-    // 表格列定义
-    const columns = [
-      {
-        title: "项目名称",
-        dataIndex: "name",
-        key: "name",
-      },
-      {
-        title: "描述",
-        dataIndex: "description",
-        key: "description",
-      },
-      {
-        title: "当前版本",
-        dataIndex: "current_version",
-        key: "current_version",
-        customRender: ({ text }: any) => <Tag color="blue">v{text}</Tag>,
-      },
-      {
-        title: "创建时间",
-        dataIndex: "created_at",
-        key: "created_at",
-        customRender: ({ text }: any) => new Date(text).toLocaleString(),
-      },
-      {
-        title: "操作",
-        key: "action",
-        customRender: ({ record }: any) => (
-          <Space>
-            <Button
-              type="primary"
-              size="small"
-              icon={<UploadOutlined />}
-              onClick={() => openUploadDialog(record)}
-            >
-              上传版本
-            </Button>
-            <Button
-              size="small"
-              icon={<HistoryOutlined />}
-              onClick={() => viewHistory(record)}
-            >
-              版本历史
-            </Button>
-            <Popconfirm
-              title="确定删除该项目吗？"
-              onConfirm={() => handleDelete(record.id)}
-            >
-              <Button size="small" danger icon={<DeleteOutlined />}>
-                删除
-              </Button>
-            </Popconfirm>
-          </Space>
-        ),
-      },
-    ];
-
-    // 版本历史表格列
-    const versionColumns = [
-      {
-        title: "版本号",
-        dataIndex: "version",
-        key: "version",
-        customRender: ({ text }: any) => <Tag color="green">v{text}</Tag>,
-      },
-      {
-        title: "上传用户",
-        dataIndex: "username",
-        key: "username",
-      },
-      {
-        title: "更新描述",
-        dataIndex: "description",
-        key: "description",
-      },
-      {
-        title: "文件数量",
-        dataIndex: "file_count",
-        key: "file_count",
-      },
-      {
-        title: "文件大小",
-        dataIndex: "file_size",
-        key: "file_size",
-        customRender: ({ text }: any) => {
-          const mb = (text / 1024 / 1024).toFixed(2);
-          return `${mb} MB`;
-        },
-      },
-      {
-        title: "上传时间",
-        dataIndex: "created_at",
-        key: "created_at",
-        customRender: ({ text }: any) => new Date(text).toLocaleString(),
-      },
-      {
-        title: "操作",
-        key: "action",
-        customRender: ({ record }: any) => (
-          <Space>
-            <Button
-              type="primary"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => openPreview(record)}
-            >
-              预览
-            </Button>
-            <Button
-              size="small"
-              icon={<DownloadOutlined />}
-              onClick={() => window.open(downloadVersion(record.id))}
-            >
-              下载
-            </Button>
-            <Popconfirm
-              title="确定回滚到此版本吗？"
-              onConfirm={() => handleRollback(record.id)}
-            >
-              <Button size="small">回滚</Button>
-            </Popconfirm>
-          </Space>
-        ),
-      },
-    ];
+    // 点击卡片打开项目
+    const handleCardClick = (project: Project) => {
+      openPreview(project);
+    };
 
     onMounted(() => {
       loadProjects();
     });
 
     return () => (
-      <div style={{ padding: "24px" }}>
-        <Card>
-          <Space style={{ marginBottom: "16px" }}>
+      <div class="projects-page">
+        {/* 顶部工具栏 */}
+        <div class="header-bar">
+          {/* 左侧统计 */}
+          <div class="stats-section">
+            <div class="stat-item">
+              <FolderOutlined class="stat-icon" />
+              <div class="stat-content">
+                <div class="stat-label">总项目数</div>
+                <div class="stat-value">{total.value}</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-content">
+                <div class="stat-label">当前页</div>
+                <div class="stat-value">
+                  {page.value}/{Math.ceil(total.value / pageSize.value) || 1}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 右侧操作 */}
+          <div class="actions-section">
+            <Search
+              placeholder="搜索项目名称"
+              allowClear
+              onSearch={(value: string) => {
+                keyword.value = value;
+                page.value = 1;
+                loadProjects();
+              }}
+              style={{ width: 240 }}
+            />
+            <Select
+              value={pageSize.value}
+              onChange={(value: any) => {
+                pageSize.value = Number(value);
+                page.value = 1;
+                loadProjects();
+              }}
+              style={{ width: 110 }}
+              options={[
+                { label: "12 条/页", value: 12 },
+                { label: "24 条/页", value: 24 },
+                { label: "48 条/页", value: 48 },
+              ]}
+            />
+            <Button onClick={loadProjects} loading={loading.value}>
+              {{
+                icon: () => <ReloadOutlined />,
+                default: () => "刷新",
+              }}
+            </Button>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -408,32 +313,173 @@ export default defineComponent({
             >
               新建项目
             </Button>
-            <Input
-              v-model={[keyword.value, "value"]}
-              placeholder="搜索项目"
-              style={{ width: "300px" }}
-              onPressEnter={loadProjects}
-            />
-            <Button onClick={loadProjects}>搜索</Button>
-          </Space>
+          </div>
+        </div>
 
-          <Table
-            columns={columns}
-            dataSource={projects.value}
-            loading={loading.value}
-            rowKey="id"
-            pagination={{
-              current: page.value,
-              pageSize: pageSize.value,
-              total: total.value,
-              onChange: (p, ps) => {
-                page.value = p;
-                pageSize.value = ps;
-                loadProjects();
-              },
-            }}
-          />
-        </Card>
+        {/* 项目网格 */}
+        <Spin spinning={loading.value}>
+          {projects.value.length === 0 ? (
+            <div class="empty-container">
+              <Empty description="暂无项目数据" />
+            </div>
+          ) : (
+            <div class="project-grid">
+              {projects.value.map((project: Project) => (
+                <div key={project.id} class="project-card">
+                  {/* 预览图区域 - 点击打开项目 */}
+                  <div
+                    class="project-preview"
+                    onClick={() => handleCardClick(project)}
+                  >
+                    {project.thumbnail_url ? (
+                      <img src={project.thumbnail_url} alt={project.name} />
+                    ) : (
+                      <div class="preview-placeholder">
+                        <FolderOutlined />
+                        <div class="preview-text">点击打开项目</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 项目信息 */}
+                  <div class="project-info">
+                    <div class="project-name" title={project.name}>
+                      {project.name}
+                    </div>
+                    <div
+                      class="project-description"
+                      title={project.description}
+                    >
+                      {project.description || "暂无描述"}
+                    </div>
+
+                    {/* 版本信息 */}
+                    <div class="project-meta">
+                      <Tag color="blue">v{project.current_version}</Tag>
+                      <span class="update-time">
+                        {new Date(project.updated_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div class="project-actions">
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<UploadOutlined />}
+                        onClick={(e: Event) => {
+                          e.stopPropagation();
+                          openUploadDialog(project);
+                        }}
+                      >
+                        上传版本
+                      </Button>
+                      <Button
+                        size="small"
+                        icon={<HistoryOutlined />}
+                        onClick={(e: Event) => {
+                          e.stopPropagation();
+                          viewHistory(project);
+                        }}
+                      >
+                        历史
+                      </Button>
+                      <Popconfirm
+                        title="确定删除该项目吗？"
+                        onConfirm={() => handleDelete(project.id)}
+                      >
+                        <Button
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={(e: Event) => e.stopPropagation()}
+                        />
+                      </Popconfirm>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Spin>
+
+        {/* 版本历史对话框 */}
+        <Modal
+          v-model={[historyDialogVisible.value, "visible"]}
+          title={`版本历史 - ${currentProject.value?.name}`}
+          footer={null}
+          width={1000}
+        >
+          {versions.value.length === 0 ? (
+            <Empty description="暂无版本历史" />
+          ) : (
+            <div class="version-list">
+              {versions.value.map((version: ProjectVersion) => (
+                <div key={version.id} class="version-item">
+                  <div class="version-header">
+                    <Tag color="green">v{version.version}</Tag>
+                    <span class="version-user">{version.username}</span>
+                    <span class="version-time">
+                      {new Date(version.created_at).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* 缩略图预览 */}
+                  {version.thumbnail_url && (
+                    <div class="version-thumbnail">
+                      <img
+                        src={version.thumbnail_url}
+                        alt="预览"
+                        onClick={() =>
+                          window.open(version.preview_url, "_blank")
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <div class="version-description">
+                    {version.description || "无更新描述"}
+                  </div>
+                  <div class="version-meta">
+                    <span>文件数: {version.file_count}</span>
+                    <span>
+                      大小: {(version.file_size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </div>
+                  <div class="version-actions">
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => {
+                        if (version.preview_url) {
+                          window.open(version.preview_url, "_blank");
+                        } else {
+                          message.warning("该版本没有预览页面");
+                        }
+                      }}
+                    >
+                      预览
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => window.open(downloadVersion(version.id))}
+                    >
+                      下载
+                    </Button>
+                    <Popconfirm
+                      title="确定回滚到此版本吗？"
+                      onConfirm={() => handleRollback(version.id)}
+                    >
+                      <Button size="small">回滚</Button>
+                    </Popconfirm>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
 
         {/* 创建项目对话框 */}
         <Modal
@@ -506,27 +552,7 @@ export default defineComponent({
                 </div>
               )}
             </FormItem>
-            {uploading.value && (
-              <FormItem>
-                <Progress percent={uploadProgress.value} />
-              </FormItem>
-            )}
           </Form>
-        </Modal>
-
-        {/* 版本历史对话框 */}
-        <Modal
-          v-model={[historyDialogVisible.value, "visible"]}
-          title={`版本历史 - ${currentProject.value?.name}`}
-          footer={null}
-          width={1000}
-        >
-          <Table
-            columns={versionColumns}
-            dataSource={versions.value}
-            rowKey="id"
-            pagination={false}
-          />
         </Modal>
       </div>
     );

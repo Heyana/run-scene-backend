@@ -16,8 +16,14 @@ type Project struct {
 	CurrentVersion  string     `gorm:"size:20" json:"current_version"`
 	LatestVersionID uint       `json:"latest_version_id"`
 	
+	// 缩略图路径（最新版本的截图）
+	ThumbnailPath   string     `gorm:"size:512" json:"thumbnail_path"`
+	
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+	
+	// 虚拟字段
+	ThumbnailURL    string     `gorm:"-" json:"thumbnail_url"`
 	
 	// 关联
 	Versions        []ProjectVersion `gorm:"foreignKey:ProjectID" json:"versions,omitempty"`
@@ -43,14 +49,28 @@ type ProjectVersion struct {
 	// 解压后的目录路径（用于预览）
 	ExtractedPath string   `gorm:"size:512" json:"extracted_path"`
 	
+	// 截图路径
+	ThumbnailPath string   `gorm:"size:512" json:"thumbnail_path"`
+	
 	CreatedAt   time.Time  `json:"created_at"`
 	
 	// 虚拟字段
-	FileURL     string     `gorm:"-" json:"file_url"`
-	PreviewURL  string     `gorm:"-" json:"preview_url"`
+	FileURL      string     `gorm:"-" json:"file_url"`
+	PreviewURL   string     `gorm:"-" json:"preview_url"`
+	ThumbnailURL string     `gorm:"-" json:"thumbnail_url"`
 }
 
-// AfterFind 查询后钩子
+// AfterFind 查询后钩子 - Project
+func (p *Project) AfterFind(tx *gorm.DB) error {
+	// 构建缩略图URL
+	if p.ThumbnailPath != "" {
+		p.ThumbnailURL = buildProjectURL(p.ThumbnailPath)
+	}
+	
+	return nil
+}
+
+// AfterFind 查询后钩子 - ProjectVersion
 func (pv *ProjectVersion) AfterFind(tx *gorm.DB) error {
 	if pv.FilePath != "" {
 		pv.FileURL = buildProjectURL(pv.FilePath)
@@ -59,6 +79,11 @@ func (pv *ProjectVersion) AfterFind(tx *gorm.DB) error {
 	// 构建预览URL
 	if pv.ExtractedPath != "" {
 		pv.PreviewURL = buildPreviewURL(pv.ExtractedPath)
+	}
+	
+	// 构建缩略图URL
+	if pv.ThumbnailPath != "" {
+		pv.ThumbnailURL = buildProjectURL(pv.ThumbnailPath)
 	}
 	
 	return nil

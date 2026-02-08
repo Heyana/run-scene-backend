@@ -6,6 +6,8 @@ export interface Project {
   description: string;
   current_version: string;
   latest_version_id: number;
+  thumbnail_path: string;
+  thumbnail_url: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +24,8 @@ export interface ProjectVersion {
   file_count: number;
   upload_ip: string;
   extracted_path: string;
+  thumbnail_path: string;
+  thumbnail_url: string;
   created_at: string;
   file_url: string;
   preview_url: string;

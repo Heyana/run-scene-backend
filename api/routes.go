@@ -382,6 +382,48 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			filepath = filepath[1:]
 		}
 		
+		// 检查是否是项目根路径访问（如 /projects/123/ 或 /projects/123）
+		// 如果是，重定向到最新版本
+		parts := strings.Split(strings.TrimSuffix(filepath, "/"), "/")
+		
+		// 如果只有一个部分（项目名称），说明是访问项目根路径
+		if len(parts) == 1 && parts[0] != "" {
+			projectName := parts[0]
+			
+			// 查询该项目的最新版本
+			db := database.MustGetDB()
+			var project struct {
+				CurrentVersion string `gorm:"column:current_version"`
+			}
+			err := db.Table("project").Select("current_version").Where("name = ?", projectName).First(&project).Error
+			if err == nil && project.CurrentVersion != "" {
+				// 重定向到最新版本
+				redirectURL := "/projects/" + projectName + "/v" + project.CurrentVersion + "/"
+				logger.Log.Infof("重定向项目 %s 到最新版本: %s", projectName, redirectURL)
+				c.Redirect(302, redirectURL)
+				return
+			}
+		}
+		
+		// 如果是两个部分，检查第二部分是否是 index.html
+		if len(parts) == 2 && parts[0] != "" && parts[1] == "index.html" {
+			projectName := parts[0]
+			
+			// 查询该项目的最新版本
+			db := database.MustGetDB()
+			var project struct {
+				CurrentVersion string `gorm:"column:current_version"`
+			}
+			err := db.Table("projects").Select("current_version").Where("name = ?", projectName).First(&project).Error
+			if err == nil && project.CurrentVersion != "" {
+				// 重定向到最新版本的 index.html
+				redirectURL := "/projects/" + projectName + "/v" + project.CurrentVersion + "/index.html"
+				logger.Log.Infof("重定向项目 %s 到最新版本: %s", projectName, redirectURL)
+				c.Redirect(302, redirectURL)
+				return
+			}
+		}
+		
 		fullPath := projectDir
 		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
 			fullPath += "/"
