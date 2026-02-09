@@ -377,7 +377,6 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		logger.Log.Infof("项目管理使用本地路径提供静态文件服务: %s", projectDir)
 	}
 	
-		// 如果只有一个部分（项目名称），说明是访问项目根路径
 	router.Static("/projects", projectDir)
 	
 	// 项目历史版本静态服务
