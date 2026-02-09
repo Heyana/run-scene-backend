@@ -154,6 +154,14 @@ export default defineComponent({
           count: stats.value.assets.total,
         },
         {
+          title: "文件库",
+          icon: FolderOutlined,
+          description: "公司文档资料管理",
+          path: "/documents",
+          color: "#13c2c2",
+          count: 0,
+        },
+        {
           title: "AI 3D",
           icon: RocketOutlined,
           description: "AI 生成 3D 模型",

@@ -112,6 +112,11 @@ func RunMigrations() error {
 		&models.AssetMetadata{},
 		&models.AssetTag{},
 		&models.AssetMetrics{},
+		// 文件库相关表
+		&models.Document{},
+		&models.DocumentMetadata{},
+		&models.DocumentAccessLog{},
+		&models.DocumentMetrics{},
 		// 项目管理相关表
 		&models.Project{},
 		&models.ProjectVersion{},
@@ -151,6 +156,16 @@ func RunMigrations() error {
 		logger.Log.Warnf("创建资产库存储目录失败: %v", err)
 	} else {
 		logger.Log.Infof("资产库存储目录: %s", config.AppConfig.Asset.StorageDir)
+	}
+
+	// 创建文件库存储目录
+	docConfig, err := config.LoadDocumentConfig()
+	if err == nil {
+		if err := os.MkdirAll(docConfig.StorageDir, 0755); err != nil {
+			logger.Log.Warnf("创建文件库存储目录失败: %v", err)
+		} else {
+			logger.Log.Infof("文件库存储目录: %s", docConfig.StorageDir)
+		}
 	}
 
 	// 创建项目管理存储目录

@@ -42,6 +42,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
+	documentController := controllers.NewDocumentController(database.MustGetDB())
 	imageController := controllers.NewImageController()
 	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
 	projectController := controllers.NewProjectController(database.MustGetDB())
@@ -390,6 +391,53 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	
 	router.Static("/project_histories", projectHistoryDir)
 
+	// 文件库静态服务
+	docConfig, _ := config.LoadDocumentConfig()
+	documentDir := "./static/documents"
+	if docConfig != nil && docConfig.NASEnabled && docConfig.NASPath != "" {
+		documentDir = docConfig.NASPath
+		logger.Log.Infof("文件库使用 NAS 路径提供静态文件服务: %s", documentDir)
+	} else {
+		logger.Log.Infof("文件库使用本地路径提供静态文件服务: %s", documentDir)
+	}
+	
+	router.GET("/documents/*filepath", func(c *gin.Context) {
+		filepath := c.Param("filepath")
+		if len(filepath) > 0 && filepath[0] == '/' {
+			filepath = filepath[1:]
+		}
+		
+		fullPath := documentDir
+		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
+			fullPath += "/"
+		}
+		fullPath += filepath
+		
+		logger.Log.Infof("请求文件库文件: %s -> %s", filepath, fullPath)
+		
+		fileInfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			logger.Log.Warnf("文件库文件不存在: %s", fullPath)
+			c.JSON(404, gin.H{
+				"error": "文件不存在",
+				"path":  fullPath,
+			})
+			return
+		}
+		if err != nil {
+			logger.Log.Errorf("访问文件库文件失败: %s, 错误: %v", fullPath, err)
+			c.JSON(500, gin.H{
+				"error": "访问文件失败",
+				"path":  fullPath,
+				"msg":   err.Error(),
+			})
+			return
+		}
+		
+		logger.Log.Infof("文件库文件存在，大小: %d bytes", fileInfo.Size())
+		c.File(fullPath)
+	})
+
 	// 设置API路由组
 	api := router.Group("/api")
 	{
@@ -468,6 +516,21 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			assets.PUT("/:id", assetController.Update)                         // 更新资产信息
 			assets.DELETE("/:id", assetController.Delete)                      // 删除资产
 			assets.POST("/:id/use", assetController.IncrementUseCount)         // 记录使用次数
+		}
+
+		// 文件库管理API
+		documents := api.Group("/documents")
+		{
+			documents.POST("/upload", documentController.Upload)               // 上传文档
+			documents.GET("", documentController.List)                         // 获取文档列表
+			documents.GET("/statistics", documentController.GetStatistics)     // 获取统计信息
+			documents.GET("/popular", documentController.GetPopular)           // 获取热门文档
+			documents.GET("/:id", documentController.GetDetail)                // 获取文档详情
+			documents.PUT("/:id", documentController.Update)                   // 更新文档信息
+			documents.DELETE("/:id", documentController.Delete)                // 删除文档
+			documents.GET("/:id/download", documentController.Download)        // 下载文档
+			documents.GET("/:id/versions", documentController.GetVersions)     // 获取版本列表
+			documents.GET("/:id/logs", documentController.GetAccessLogs)       // 获取访问日志
 		}
 
 		// AI 3D生成统一API（支持多平台）

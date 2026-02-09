@@ -1,0 +1,396 @@
+package controllers
+
+import (
+	"go_wails_project_manager/config"
+	"go_wails_project_manager/response"
+	"go_wails_project_manager/services/document"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+// DocumentController 文档控制器
+type DocumentController struct {
+	uploadService *document.UploadService
+	queryService  *document.QueryService
+	config        *config.DocumentConfig
+}
+
+// NewDocumentController 创建文档控制器
+func NewDocumentController(db *gorm.DB) *DocumentController {
+	docConfig, err := config.LoadDocumentConfig()
+	if err != nil {
+		// 使用默认配置
+		docConfig = &config.DocumentConfig{}
+	}
+
+	return &DocumentController{
+		uploadService: document.NewUploadService(db, docConfig),
+		queryService:  document.NewQueryService(db),
+		config:        docConfig,
+	}
+}
+
+// Upload 上传文档
+// @Summary 上传文档
+// @Tags 文件库
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "文档文件"
+// @Param name formData string true "文档名称"
+// @Param description formData string false "描述"
+// @Param category formData string false "分类"
+// @Param tags formData string false "标签(逗号分隔)"
+// @Param department formData string false "部门"
+// @Param project formData string false "项目"
+// @Param is_public formData boolean false "是否公开"
+// @Param version formData string false "版本号"
+// @Success 200 {object} response.Response
+// @Router /api/documents/upload [post]
+func (c *DocumentController) Upload(ctx *gin.Context) {
+	// 获取上传文件
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "未找到上传文件")
+		return
+	}
+
+	// 获取元数据
+	metadata := document.UploadMetadata{
+		Name:        ctx.PostForm("name"),
+		Description: ctx.PostForm("description"),
+		Category:    ctx.PostForm("category"),
+		Department:  ctx.PostForm("department"),
+		Project:     ctx.PostForm("project"),
+		Version:     ctx.PostForm("version"),
+		UploadedBy:  ctx.GetString("username"), // 从上下文获取用户名
+		UploadIP:    ctx.ClientIP(),
+	}
+
+	// 解析标签
+	if tagsStr := ctx.PostForm("tags"); tagsStr != "" {
+		metadata.Tags = strings.Split(tagsStr, ",")
+	}
+
+	// 解析是否公开
+	if isPublicStr := ctx.PostForm("is_public"); isPublicStr != "" {
+		metadata.IsPublic = isPublicStr == "true" || isPublicStr == "1"
+	}
+
+	// 验证必填字段
+	if metadata.Name == "" {
+		response.Error(ctx, http.StatusBadRequest, "文档名称不能为空")
+		return
+	}
+
+	// 上传文件
+	uploadedDoc, err := c.uploadService.Upload(file, metadata)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "上传失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "上传成功", uploadedDoc)
+}
+
+// List 文档列表
+// @Summary 文档列表
+// @Tags 文件库
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(20)
+// @Param type query string false "文档类型"
+// @Param category query string false "分类"
+// @Param format query string false "格式"
+// @Param department query string false "部门"
+// @Param project query string false "项目"
+// @Param keyword query string false "关键词"
+// @Param sortBy query string false "排序字段"
+// @Param sortOrder query string false "排序方向"
+// @Success 200 {object} response.Response
+// @Router /api/documents [get]
+func (c *DocumentController) List(ctx *gin.Context) {
+	// 获取分页参数
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
+
+	// 构建过滤器
+	filters := document.QueryFilters{
+		Type:       ctx.Query("type"),
+		Category:   ctx.Query("category"),
+		Format:     ctx.Query("format"),
+		Department: ctx.Query("department"),
+		Project:    ctx.Query("project"),
+		Keyword:    ctx.Query("keyword"),
+		SortBy:     ctx.Query("sortBy"),
+		SortOrder:  ctx.Query("sortOrder"),
+	}
+
+	// 解析标签
+	if tagsStr := ctx.Query("tags"); tagsStr != "" {
+		filters.Tags = strings.Split(tagsStr, ",")
+	}
+
+	// 解析是否公开
+	if isPublicStr := ctx.Query("is_public"); isPublicStr != "" {
+		isPublic := isPublicStr == "true" || isPublicStr == "1"
+		filters.IsPublic = &isPublic
+	}
+
+	// 查询
+	documents, total, err := c.queryService.List(page, pageSize, filters)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithPagination(ctx, documents, total, page, pageSize)
+}
+
+// GetDetail 获取文档详情
+// @Summary 获取文档详情
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文档ID"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id} [get]
+func (c *DocumentController) GetDetail(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	doc, metadata, err := c.queryService.GetDetail(uint(id))
+	if err != nil {
+		response.Error(ctx, http.StatusNotFound, "文档不存在")
+		return
+	}
+
+	// 增加查看次数
+	c.queryService.IncrementViewCount(uint(id))
+
+	// 获取版本列表
+	versions, _ := c.queryService.GetVersions(uint(id))
+
+	result := map[string]interface{}{
+		"document": doc,
+		"metadata": metadata,
+		"versions": versions,
+	}
+
+	response.Success(ctx, result)
+}
+
+// Delete 删除文档
+// @Summary 删除文档
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文档ID"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id} [delete]
+func (c *DocumentController) Delete(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	if err := c.queryService.Delete(uint(id)); err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "删除失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "删除成功", nil)
+}
+
+// Update 更新文档信息
+// @Summary 更新文档信息
+// @Tags 文件库
+// @Accept json
+// @Produce json
+// @Param id path int true "文档ID"
+// @Param body body object true "更新内容"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id} [put]
+func (c *DocumentController) Update(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	var updates map[string]interface{}
+	if err := ctx.ShouldBindJSON(&updates); err != nil {
+		response.Error(ctx, http.StatusBadRequest, "请求参数错误")
+		return
+	}
+
+	if err := c.queryService.Update(uint(id), updates); err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "更新失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "更新成功", nil)
+}
+
+// Download 下载文档
+// @Summary 下载文档
+// @Tags 文件库
+// @Produce octet-stream
+// @Param id path int true "文档ID"
+// @Success 200 {file} binary
+// @Router /api/documents/{id}/download [get]
+func (c *DocumentController) Download(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	doc, _, err := c.queryService.GetDetail(uint(id))
+	if err != nil {
+		response.Error(ctx, http.StatusNotFound, "文档不存在")
+		return
+	}
+
+	// 增加下载次数
+	c.queryService.IncrementDownloadCount(uint(id))
+
+	// 返回文件
+	ctx.FileAttachment(doc.FilePath, doc.Name)
+}
+
+// GetStatistics 获取统计信息
+// @Summary 获取统计信息
+// @Tags 文件库
+// @Produce json
+// @Param type query string false "文档类型"
+// @Param department query string false "部门"
+// @Param project query string false "项目"
+// @Success 200 {object} response.Response
+// @Router /api/documents/statistics [get]
+func (c *DocumentController) GetStatistics(ctx *gin.Context) {
+	filters := document.QueryFilters{
+		Type:       ctx.Query("type"),
+		Department: ctx.Query("department"),
+		Project:    ctx.Query("project"),
+	}
+
+	stats, err := c.queryService.GetStatistics(filters)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败: "+err.Error())
+		return
+	}
+
+	response.Success(ctx, stats)
+}
+
+// GetPopular 获取热门文档
+// @Summary 获取热门文档
+// @Tags 文件库
+// @Produce json
+// @Param limit query int false "数量限制" default(10)
+// @Param type query string false "文档类型"
+// @Success 200 {object} response.Response
+// @Router /api/documents/popular [get]
+func (c *DocumentController) GetPopular(ctx *gin.Context) {
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+
+	filters := document.QueryFilters{
+		Type:       ctx.Query("type"),
+		Department: ctx.Query("department"),
+		Project:    ctx.Query("project"),
+	}
+
+	documents, err := c.queryService.GetPopular(limit, filters)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败: "+err.Error())
+		return
+	}
+
+	response.Success(ctx, documents)
+}
+
+// GetAccessLogs 获取访问日志
+// @Summary 获取访问日志
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文档ID"
+// @Param page query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(20)
+// @Param action query string false "操作类型"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id}/logs [get]
+func (c *DocumentController) GetAccessLogs(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
+	action := ctx.Query("action")
+
+	logs, total, err := c.queryService.GetAccessLogs(uint(id), page, pageSize, action)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithPagination(ctx, logs, total, page, pageSize)
+}
+
+// GetVersions 获取版本列表
+// @Summary 获取版本列表
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文档ID"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id}/versions [get]
+func (c *DocumentController) GetVersions(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	versions, err := c.queryService.GetVersions(uint(id))
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "查询失败: "+err.Error())
+		return
+	}
+
+	response.Success(ctx, versions)
+}
+
+// RegisterDocumentRoutes 注册文档路由
+func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB) {
+	controller := NewDocumentController(db)
+
+	api := router.Group("/api/documents")
+	{
+		// 基础操作
+		api.POST("/upload", controller.Upload)
+		api.GET("", controller.List)
+		api.GET("/:id", controller.GetDetail)
+		api.PUT("/:id", controller.Update)
+		api.DELETE("/:id", controller.Delete)
+
+		// 文件操作
+		api.GET("/:id/download", controller.Download)
+
+		// 版本管理
+		api.GET("/:id/versions", controller.GetVersions)
+
+		// 统计和日志
+		api.GET("/statistics", controller.GetStatistics)
+		api.GET("/popular", controller.GetPopular)
+		api.GET("/:id/logs", controller.GetAccessLogs)
+	}
+}
+

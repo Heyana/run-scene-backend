@@ -1,0 +1,189 @@
+package models
+
+import (
+	"go_wails_project_manager/config"
+	"strings"
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// Document 文档主表
+type Document struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	Name          string     `gorm:"size:200;index" json:"name"`
+	Description   string     `gorm:"type:text" json:"description"`
+	Category      string     `gorm:"size:50;index" json:"category"`
+	Tags          string     `gorm:"type:text" json:"tags"` // 逗号分隔
+	Type          string     `gorm:"size:20;index" json:"type"` // document, video, archive, other
+
+	// 文件信息（相对于 static 目录的路径）
+	FileSize      int64  `json:"file_size"`                      // 字节
+	FilePath      string `gorm:"size:512" json:"file_path"`      // 相对路径：documents/1/file.pdf
+	FileHash      string `gorm:"size:64;index" json:"file_hash"` // MD5
+	Format        string `gorm:"size:20" json:"format"`          // pdf, docx, mp4, zip
+
+	// 预览（相对路径）
+	ThumbnailPath string `gorm:"size:512" json:"thumbnail_path"` // documents/1/thumbnail.jpg
+	PreviewPath   string `gorm:"size:512" json:"preview_path"`   // documents/1/preview/
+
+	// 版本控制
+	Version  string `gorm:"size:20" json:"version"`
+	ParentID *uint  `json:"parent_id"` // 父版本ID
+	IsLatest bool   `gorm:"default:true;index" json:"is_latest"`
+
+	// 权限
+	Department string `gorm:"size:50;index" json:"department"`
+	Project    string `gorm:"size:100;index" json:"project"`
+	IsPublic   bool   `gorm:"default:false" json:"is_public"`
+
+	// 统计
+	DownloadCount int        `gorm:"default:0;index" json:"download_count"`
+	ViewCount     int        `gorm:"default:0" json:"view_count"`
+	LastViewedAt  *time.Time `json:"last_viewed_at"`
+
+	// 上传信息
+	UploadedBy string `gorm:"size:100" json:"uploaded_by"`
+	UploadIP   string `gorm:"size:50" json:"upload_ip"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// 虚拟字段，不存储到数据库
+	FileURL      string `gorm:"-" json:"file_url"`
+	ThumbnailURL string `gorm:"-" json:"thumbnail_url"`
+	PreviewURL   string `gorm:"-" json:"preview_url"`
+}
+
+// AfterFind GORM 钩子：查询后自动拼接完整 URL
+func (d *Document) AfterFind(tx *gorm.DB) error {
+	// 拼接文件 URL
+	if d.FilePath != "" {
+		d.FileURL = buildDocumentURL(d.FilePath)
+	}
+
+	// 拼接缩略图 URL
+	if d.ThumbnailPath != "" {
+		d.ThumbnailURL = buildDocumentURL(d.ThumbnailPath)
+	}
+
+	// 拼接预览 URL
+	if d.PreviewPath != "" {
+		d.PreviewURL = buildDocumentURL(d.PreviewPath)
+	}
+
+	return nil
+}
+
+// buildDocumentURL 构建文档文件的完整 URL
+func buildDocumentURL(path string) string {
+	// 如果已经是完整 URL（以 http 开头），直接使用
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path
+	}
+
+	// 统一将反斜杠转换为正斜杠
+	path = strings.ReplaceAll(path, "\\", "/")
+
+	// 获取文件库配置
+	docConfig, err := config.LoadDocumentConfig()
+	if err == nil && docConfig.BaseURL != "" {
+		// 确保 base_url 和 path 之间有且只有一个斜杠
+		baseURL := strings.TrimSuffix(docConfig.BaseURL, "/")
+		filePath := strings.TrimPrefix(path, "/")
+		// 移除 "static/documents/" 前缀（如果存在）
+		filePath = strings.TrimPrefix(filePath, "static/documents/")
+		filePath = strings.TrimPrefix(filePath, "documents/")
+		return baseURL + "/" + filePath
+	}
+
+	// 如果没有配置 base_url，使用相对路径
+	filePath := strings.TrimPrefix(path, "/")
+	filePath = strings.TrimPrefix(filePath, "static/documents/")
+	filePath = strings.TrimPrefix(filePath, "documents/")
+	return "/documents/" + filePath
+}
+
+// DocumentMetadata 文档元数据表
+type DocumentMetadata struct {
+	ID         uint   `gorm:"primaryKey" json:"id"`
+	DocumentID uint   `gorm:"uniqueIndex" json:"document_id"`
+
+	// 文档元数据
+	PageCount int    `json:"page_count,omitempty"` // PDF页数
+	Author    string `gorm:"size:100" json:"author,omitempty"`
+	Title     string `gorm:"size:200" json:"title,omitempty"`
+	Subject   string `gorm:"size:200" json:"subject,omitempty"`
+
+	// 视频元数据
+	Duration  float64 `json:"duration,omitempty"`
+	Width     int     `json:"width,omitempty"`
+	Height    int     `json:"height,omitempty"`
+	FrameRate float64 `json:"frame_rate,omitempty"`
+	Codec     string  `gorm:"size:50" json:"codec,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// DocumentAccessLog 访问日志表
+type DocumentAccessLog struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	DocumentID uint      `gorm:"index" json:"document_id"`
+	Action     string    `gorm:"size:20;index" json:"action"` // view, download, upload, delete
+	UserName   string    `gorm:"size:100;index" json:"user_name"`
+	UserIP     string    `gorm:"size:50" json:"user_ip"`
+	CreatedAt  time.Time `gorm:"index" json:"created_at"`
+}
+
+// DocumentMetrics 统计指标表
+type DocumentMetrics struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	Date          string    `gorm:"uniqueIndex:idx_document_date_type;size:10" json:"date"` // YYYY-MM-DD
+	Type          string    `gorm:"uniqueIndex:idx_document_date_type;size:20" json:"type"` // document, video, archive, other
+	TotalDocs     int       `json:"total_docs"`
+	TotalSize     int64     `json:"total_size"`
+	UploadCount   int       `json:"upload_count"`
+	DownloadCount int       `json:"download_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// 文档类型常量
+const (
+	TypeDocument = "document" // PDF, Word, Excel, PPT, TXT
+	TypeVideo    = "video"    // MP4, WebM, AVI, MOV
+	TypeArchive  = "archive"  // ZIP, RAR, 7Z
+	TypeOther    = "other"    // 其他类型
+)
+
+// FormatTypeMap 格式到类型的映射
+var FormatTypeMap = map[string]string{
+	"pdf":  TypeDocument,
+	"doc":  TypeDocument,
+	"docx": TypeDocument,
+	"xls":  TypeDocument,
+	"xlsx": TypeDocument,
+	"ppt":  TypeDocument,
+	"pptx": TypeDocument,
+	"txt":  TypeDocument,
+	"md":   TypeDocument,
+
+	"mp4":  TypeVideo,
+	"webm": TypeVideo,
+	"avi":  TypeVideo,
+	"mov":  TypeVideo,
+
+	"zip": TypeArchive,
+	"rar": TypeArchive,
+	"7z":  TypeArchive,
+}
+
+// GetDocumentType 根据格式获取文档类型
+func GetDocumentType(format string) string {
+	if docType, ok := FormatTypeMap[strings.ToLower(format)]; ok {
+		return docType
+	}
+	return TypeOther
+}
+
