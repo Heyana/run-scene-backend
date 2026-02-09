@@ -51,6 +51,8 @@ export default defineComponent({
     const createForm = ref({
       name: "",
       description: "",
+      project_type: "upload" as "upload" | "external",
+      external_url: "",
     });
 
     // 上传版本对话框
@@ -96,11 +98,25 @@ export default defineComponent({
         message.warning("请输入项目名称");
         return;
       }
+
+      if (
+        createForm.value.project_type === "external" &&
+        !createForm.value.external_url
+      ) {
+        message.warning("请输入外部链接");
+        return;
+      }
+
       try {
         await createProject(createForm.value);
         message.success("创建成功");
         createDialogVisible.value = false;
-        createForm.value = { name: "", description: "" };
+        createForm.value = {
+          name: "",
+          description: "",
+          project_type: "upload",
+          external_url: "",
+        };
         loadProjects();
       } catch (error) {
         message.error("创建失败");
@@ -224,20 +240,25 @@ export default defineComponent({
 
     // 打开预览
     const openPreview = (project: Project) => {
-      // 如果有缩略图URL，从中提取 baseURL
-      // 否则使用默认的后端地址
-      let baseURL = "http://192.168.3.39:23359";
-
-      if (project.thumbnail_url) {
-        // 从 thumbnail_url 中提取 baseURL
-        // 例如: http://192.168.3.39:23359/projects/123/thumbnail.png
-        const url = new URL(project.thumbnail_url);
-        baseURL = `${url.protocol}//${url.host}`;
+      // 如果是外部链接项目，直接打开外部 URL
+      if (project.project_type === "external" && project.external_url) {
+        window.open(project.external_url, "_blank");
+        return;
       }
 
-      // 构建项目URL，直接访问固定路径（始终是最新版本）
-      const projectURL = `${baseURL}/projects/${project.name}/index.html`;
-      window.open(projectURL, "_blank");
+      // 上传文件项目，使用 preview_url
+      if (project.preview_url) {
+        window.open(project.preview_url, "_blank");
+      } else {
+        // 兼容旧逻辑
+        let baseURL = "http://192.168.3.39:23359";
+        if (project.thumbnail_url) {
+          const url = new URL(project.thumbnail_url);
+          baseURL = `${url.protocol}//${url.host}`;
+        }
+        const projectURL = `${baseURL}/projects/${project.name}/index.html`;
+        window.open(projectURL, "_blank");
+      }
     };
 
     // 点击卡片打开项目
@@ -366,27 +387,53 @@ export default defineComponent({
                 </span>
               </div>
               <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<UploadOutlined />}
-                  onClick={(e: Event) => {
-                    e.stopPropagation();
-                    openUploadDialog(project);
-                  }}
-                >
-                  上传
-                </Button>
-                <Button
-                  size="small"
-                  icon={<HistoryOutlined />}
-                  onClick={(e: Event) => {
-                    e.stopPropagation();
-                    viewHistory(project);
-                  }}
-                >
-                  历史
-                </Button>
+                {project.project_type !== "external" && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<UploadOutlined />}
+                    onClick={(e: Event) => {
+                      e.stopPropagation();
+                      openUploadDialog(project);
+                    }}
+                  >
+                    上传
+                  </Button>
+                )}
+                {project.project_type !== "external" && (
+                  <Button
+                    size="small"
+                    icon={<HistoryOutlined />}
+                    onClick={(e: Event) => {
+                      e.stopPropagation();
+                      viewHistory(project);
+                    }}
+                  >
+                    历史
+                  </Button>
+                )}
+                {project.project_type === "external" && (
+                  <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={async (e: Event) => {
+                      e.stopPropagation();
+                      try {
+                        await fetch(
+                          `/api/projects/${project.id}/refresh-thumbnail`,
+                          {
+                            method: "POST",
+                          },
+                        );
+                        message.success("缩略图刷新任务已启动");
+                      } catch (error) {
+                        message.error("刷新失败");
+                      }
+                    }}
+                  >
+                    刷新截图
+                  </Button>
+                )}
                 <Popconfirm
                   title="确定删除该项目吗？"
                   onConfirm={() => handleDelete(project.id)}
@@ -496,6 +543,20 @@ export default defineComponent({
                 placeholder="请输入项目名称"
               />
             </FormItem>
+            <FormItem label="项目类型" required>
+              <Select v-model={[createForm.value.project_type, "value"]}>
+                <SelectOption value="upload">上传文件</SelectOption>
+                <SelectOption value="external">外部链接</SelectOption>
+              </Select>
+            </FormItem>
+            {createForm.value.project_type === "external" && (
+              <FormItem label="外部链接" required>
+                <Input
+                  v-model={[createForm.value.external_url, "value"]}
+                  placeholder="请输入项目URL，例如: http://192.168.3.10:8080/old-project"
+                />
+              </FormItem>
+            )}
             <FormItem label="项目描述">
               <Textarea
                 v-model={[createForm.value.description, "value"]}

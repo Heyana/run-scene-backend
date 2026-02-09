@@ -16,6 +16,12 @@ type Project struct {
 	CurrentVersion  string     `gorm:"size:20" json:"current_version"`
 	LatestVersionID uint       `json:"latest_version_id"`
 	
+	// 项目类型：upload（上传文件）或 external（外部链接）
+	ProjectType     string     `gorm:"size:20;default:upload" json:"project_type"`
+	
+	// 外部链接（当 project_type 为 external 时使用）
+	ExternalURL     string     `gorm:"size:512" json:"external_url"`
+	
 	// 缩略图路径（最新版本的截图）
 	ThumbnailPath   string     `gorm:"size:512" json:"thumbnail_path"`
 	
@@ -24,6 +30,7 @@ type Project struct {
 	
 	// 虚拟字段
 	ThumbnailURL    string     `gorm:"-" json:"thumbnail_url"`
+	PreviewURL      string     `gorm:"-" json:"preview_url"` // 预览 URL（外部链接或最新版本）
 	
 	// 关联
 	Versions        []ProjectVersion `gorm:"foreignKey:ProjectID" json:"versions,omitempty"`
@@ -68,6 +75,17 @@ func (p *Project) AfterFind(tx *gorm.DB) error {
 	// 构建缩略图URL
 	if p.ThumbnailPath != "" {
 		p.ThumbnailURL = buildProjectURL(p.ThumbnailPath)
+	}
+	
+	// 构建预览URL
+	if p.ProjectType == "external" {
+		// 外部链接项目，直接使用外部 URL
+		p.PreviewURL = p.ExternalURL
+	} else {
+		// 上传文件项目，构建最新版本的预览 URL
+		if p.Name != "" {
+			p.PreviewURL = buildProjectPreviewURL(p.Name)
+		}
 	}
 	
 	return nil
@@ -206,6 +224,16 @@ func buildPreviewURL(extractedPath string) string {
 	}
 
 	return urlPrefix + "/" + relativePath + "/index.html"
+}
+
+// buildProjectPreviewURL 构建项目的预览 URL（当前版本）
+func buildProjectPreviewURL(projectName string) string {
+	if config.ProjectAppConfig != nil && config.ProjectAppConfig.BaseURL != "" {
+		baseURL := strings.TrimSuffix(config.ProjectAppConfig.BaseURL, "/")
+		return baseURL + "/" + projectName + "/index.html"
+	}
+	
+	return "/projects/" + projectName + "/index.html"
 }
 
 // extractProjectRelativePath 从完整路径提取相对路径

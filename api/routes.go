@@ -511,6 +511,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			projects.DELETE("/:id", projectController.DeleteProject)                 // 删除项目
 			projects.POST("/:id/versions", projectController.UploadVersion)          // 上传版本
 			projects.GET("/:id/versions", projectController.GetVersionHistory)       // 获取版本历史
+			projects.POST("/:id/refresh-thumbnail", projectController.RefreshThumbnail) // 刷新缩略图
 			projects.GET("/versions/:versionId/download", projectController.DownloadVersion) // 下载版本
 			projects.POST("/versions/:versionId/rollback", projectController.RollbackVersion) // 回滚版本
 		}

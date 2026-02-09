@@ -52,6 +52,8 @@ func (pc *ProjectController) CreateProject(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required,max=200"`
 		Description string `json:"description"`
+		ProjectType string `json:"project_type"` // upload 或 external
+		ExternalURL string `json:"external_url"` // 外部链接（当 project_type 为 external 时必填）
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,7 +61,23 @@ func (pc *ProjectController) CreateProject(c *gin.Context) {
 		return
 	}
 
-	project, err := pc.service.CreateProject(req.Name, req.Description)
+	// 验证项目类型
+	if req.ProjectType == "" {
+		req.ProjectType = "upload" // 默认为上传类型
+	}
+	
+	if req.ProjectType != "upload" && req.ProjectType != "external" {
+		response.Error(c, response.CodeBadRequest, "项目类型只能是 upload 或 external")
+		return
+	}
+	
+	// 如果是外部链接类型，必须提供 URL
+	if req.ProjectType == "external" && req.ExternalURL == "" {
+		response.Error(c, response.CodeBadRequest, "外部链接项目必须提供 external_url")
+		return
+	}
+
+	project, err := pc.service.CreateProject(req.Name, req.Description, req.ProjectType, req.ExternalURL)
 	if err != nil {
 		response.Error(c, response.CodeInternalServerError, "创建项目失败")
 		return
@@ -232,4 +250,16 @@ func (pc *ProjectController) RollbackVersion(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "回滚成功"})
+}
+
+// RefreshThumbnail 刷新项目缩略图
+func (pc *ProjectController) RefreshThumbnail(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+
+	if err := pc.service.RefreshProjectThumbnail(uint(id)); err != nil {
+		response.Error(c, response.CodeInternalServerError, "刷新缩略图失败")
+		return
+	}
+
+	response.Success(c, gin.H{"message": "缩略图刷新任务已启动"})
 }

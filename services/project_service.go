@@ -46,15 +46,22 @@ func (ps *ProjectService) GetProjects(page, pageSize int, keyword string) ([]mod
 }
 
 // CreateProject 创建项目
-func (ps *ProjectService) CreateProject(name, description string) (*models.Project, error) {
+func (ps *ProjectService) CreateProject(name, description, projectType, externalURL string) (*models.Project, error) {
 	project := &models.Project{
 		Name:           name,
 		Description:    description,
+		ProjectType:    projectType,
+		ExternalURL:    externalURL,
 		CurrentVersion: config.ProjectAppConfig.DefaultInitialVersion,
 	}
 
 	if err := ps.db.Create(project).Error; err != nil {
 		return nil, err
+	}
+
+	// 如果是外部链接项目，异步生成缩略图
+	if projectType == "external" && externalURL != "" {
+		go ps.generateExternalProjectScreenshot(project)
 	}
 
 	return project, nil
@@ -443,4 +450,71 @@ func resolveAbsolutePath(relativePath string) string {
 	}
 	
 	return filepath.Join(basePath, relativePath)
+}
+
+// generateExternalProjectScreenshot 为外部链接项目生成缩略图
+func (ps *ProjectService) generateExternalProjectScreenshot(project *models.Project) {
+	if project.ExternalURL == "" {
+		log.Printf("外部项目 %d 没有 URL，跳过截图", project.ID)
+		return
+	}
+
+	// 创建项目目录（用于存储缩略图）
+	projectDir := filepath.Join("static", "projects", project.Name)
+	if config.ProjectAppConfig.NASEnabled {
+		projectDir = filepath.Join(config.ProjectAppConfig.NASPath, project.Name)
+	}
+	
+	// 确保目录存在
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		log.Printf("创建外部项目目录失败 (项目 %d): %v", project.ID, err)
+		return
+	}
+
+	// 生成缩略图路径（绝对路径）
+	thumbnailPath := filepath.Join(projectDir, "thumbnail.png")
+
+	log.Printf("开始为外部项目 %d 生成预览截图: %s", project.ID, project.ExternalURL)
+	log.Printf("截图保存路径: %s", thumbnailPath)
+
+	// 生成缩略图（1200x800）
+	if err := utils.GenerateThumbnail(project.ExternalURL, thumbnailPath, 1200, 800); err != nil {
+		log.Printf("生成外部项目截图失败 (项目 %d): %v", project.ID, err)
+		return
+	}
+
+	log.Printf("外部项目截图生成成功: %s", thumbnailPath)
+
+	// 转换为相对路径
+	relativeThumbnailPath := extractRelativePath(thumbnailPath)
+
+	// 更新项目记录的缩略图路径
+	if err := ps.db.Model(project).Update("thumbnail_path", relativeThumbnailPath).Error; err != nil {
+		log.Printf("更新外部项目缩略图路径失败 (项目 %d): %v", project.ID, err)
+		return
+	}
+
+	log.Printf("外部项目 %d 的预览截图已保存到数据库", project.ID)
+}
+
+// RefreshProjectThumbnail 刷新项目缩略图
+func (ps *ProjectService) RefreshProjectThumbnail(projectID uint) error {
+	var project models.Project
+	if err := ps.db.First(&project, projectID).Error; err != nil {
+		return err
+	}
+
+	// 异步生成缩略图
+	if project.ProjectType == "external" {
+		go ps.generateExternalProjectScreenshot(&project)
+	} else {
+		// 上传文件型项目，重新生成最新版本的缩略图
+		var version models.ProjectVersion
+		if err := ps.db.Where("project_id = ? AND id = ?", projectID, project.LatestVersionID).First(&version).Error; err != nil {
+			return err
+		}
+		go ps.generateScreenshotAsync(&version)
+	}
+
+	return nil
 }
