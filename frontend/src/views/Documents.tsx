@@ -1,241 +1,632 @@
-import { defineComponent, ref, onMounted } from "vue";
+import { defineComponent, ref, onMounted, computed, watch } from "vue";
 import {
   message,
-  Tag,
   Modal,
-  Upload,
-  Form,
-  Input,
-  Select,
   Image,
+  Breadcrumb,
+  BreadcrumbItem,
 } from "ant-design-vue";
 import {
+  Button,
+  Input,
+  Tag,
+  Form,
+  FormItem,
+  Textarea,
+  Popconfirm,
+  Upload,
+} from "ant-design-vue";
+import {
+  UploadOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  FolderOutlined,
   FileOutlined,
   ReloadOutlined,
-  EyeOutlined,
-  DownloadOutlined,
-  UploadOutlined,
-  FilePdfOutlined,
-  FileWordOutlined,
-  FileExcelOutlined,
-  FilePptOutlined,
-  FileTextOutlined,
-  FileZipOutlined,
-  VideoCameraOutlined,
+  FolderAddOutlined,
+  ArrowLeftOutlined,
   PlayCircleOutlined,
 } from "@ant-design/icons-vue";
 import ResourceHeader from "@/components/ResourceHeader";
 import ResourceGrid from "@/components/ResourceGrid";
-import { getDocuments, uploadDocument } from "@/api/documents";
+import {
+  getDocuments,
+  uploadDocument,
+  uploadFolder,
+  deleteDocument,
+  createFolder,
+} from "@/api/documents";
+import type { Document } from "@/api/documents";
+import "./Documents.less";
+import { useRoute, useRouter } from "vue-router";
 
 export default defineComponent({
   name: "Documents",
   setup() {
+    const route = useRoute();
+    const router = useRouter();
+
+    const documents = ref<Document[]>([]);
     const loading = ref(false);
-    const documents = ref<any[]>([]);
     const total = ref(0);
-    const currentPage = ref(1);
+    const page = ref(1);
     const pageSize = ref(24);
     const keyword = ref("");
-    const docType = ref<string | undefined>(undefined);
-    const uploadVisible = ref(false);
-    const uploadLoading = ref(false);
-    const previewVisible = ref(false);
-    const previewItem = ref<any>(null);
-    const formRef = ref();
-    const fileList = ref<any[]>([]);
+    const currentFolderId = ref<number>(0); // 0 表示根目录
+    const breadcrumb = ref<Array<{ id: number; name: string }>>([
+      { id: 0, name: "文件库" },
+    ]);
 
-    const formState = ref({
+    // 创建文件夹对话框
+    const createFolderVisible = ref(false);
+    const folderForm = ref({
+      name: "",
+      description: "",
+    });
+
+    // 上传文件对话框
+    const uploadDialogVisible = ref(false);
+    const uploadForm = ref({
       name: "",
       description: "",
       category: "",
-      department: "",
-      project: "",
-      tags: "",
+      file: null as File | null,
+    });
+    const fileList = ref<any[]>([]);
+    const uploadProgress = ref(0);
+    const isUploading = ref(false);
+
+    // 上传文件夹对话框
+    const uploadFolderDialogVisible = ref(false);
+    const uploadFolderForm = ref({
+      description: "",
+      category: "",
+      files: [] as File[],
+    });
+    const folderFileList = ref<any[]>([]);
+
+    // 预览对话框
+    const previewVisible = ref(false);
+    const previewUrl = ref("");
+    const previewType = ref("");
+
+    // 拖拽上传
+    const isDragging = ref(false);
+    const dragCounter = ref(0);
+    const dragUploadProgress = ref(0);
+    const isDragUploading = ref(false);
+    const dragUploadStatus = ref("");
+
+    // 统计信息
+    const folderCount = computed(() => {
+      return documents.value.filter((d) => d.is_folder).length;
     });
 
-    // 加载数据
-    const loadData = async () => {
+    const fileCount = computed(() => {
+      return documents.value.filter((d) => !d.is_folder).length;
+    });
+
+    // 从 URL 读取文件夹 ID
+    const initFromRoute = async () => {
+      const folderId = route.query.folder;
+      if (folderId) {
+        const id = parseInt(folderId as string, 10);
+        if (!isNaN(id) && id !== 0) {
+          currentFolderId.value = id;
+          // 需要加载面包屑路径
+          await loadBreadcrumbPath(id);
+        }
+      }
+    };
+
+    // 加载面包屑路径（简化版：通过 parent_id 递归查询）
+    const loadBreadcrumbPath = async (folderId: number) => {
+      if (folderId === 0) {
+        breadcrumb.value = [{ id: 0, name: "文件库" }];
+        return;
+      }
+
+      try {
+        const path: Array<{ id: number; name: string }> = [];
+        let currentId: number | null = folderId;
+
+        // 递归查找父文件夹
+        while (currentId !== null && currentId !== 0) {
+          // 获取当前文件夹的详情
+          try {
+            const res = await getDocuments({
+              page: 1,
+              pageSize: 1000,
+            });
+
+            const allDocs = res.data.list || [];
+            const folder = allDocs.find(
+              (d: Document) => d.id === currentId && d.is_folder,
+            );
+
+            if (folder) {
+              path.unshift({ id: folder.id, name: folder.name });
+              currentId = folder.parent_id || 0;
+            } else {
+              // 找不到文件夹，可能已被删除
+              console.warn(`文件夹 ${currentId} 不存在`);
+              break;
+            }
+          } catch (error) {
+            console.error("查询文件夹失败:", error);
+            break;
+          }
+        }
+
+        if (path.length > 0) {
+          breadcrumb.value = [{ id: 0, name: "文件库" }, ...path];
+        } else {
+          // 如果找不到路径，回到根目录
+          breadcrumb.value = [{ id: 0, name: "文件库" }];
+          currentFolderId.value = 0;
+          updateRoute(0);
+        }
+      } catch (error) {
+        console.error("加载面包屑路径失败:", error);
+        breadcrumb.value = [{ id: 0, name: "文件库" }];
+        currentFolderId.value = 0;
+        updateRoute(0);
+      }
+    };
+
+    // 更新 URL
+    const updateRoute = (folderId: number) => {
+      if (folderId === 0) {
+        router.replace({ query: {} });
+      } else {
+        router.replace({ query: { folder: String(folderId) } });
+      }
+    };
+
+    // 加载当前目录内容
+    const loadCurrentFolder = async () => {
       loading.value = true;
       try {
         const res = await getDocuments({
-          page: currentPage.value,
+          page: page.value,
           pageSize: pageSize.value,
-          type: docType.value,
           keyword: keyword.value,
+          parent_id: currentFolderId.value,
         });
         documents.value = res.data.list || [];
         total.value = res.data.total || 0;
       } catch (error) {
         message.error("加载失败");
-        documents.value = [];
-        total.value = 0;
       } finally {
         loading.value = false;
+      }
+    };
+
+    // 创建文件夹
+    const handleCreateFolder = async () => {
+      if (!folderForm.value.name) {
+        message.warning("请输入文件夹名称");
+        return;
+      }
+
+      try {
+        await createFolder({
+          name: folderForm.value.name,
+          description: folderForm.value.description,
+          parent_id:
+            currentFolderId.value === 0 ? undefined : currentFolderId.value,
+        });
+        message.success("创建成功");
+        createFolderVisible.value = false;
+        folderForm.value = { name: "", description: "" };
+        loadCurrentFolder();
+      } catch (error) {
+        message.error("创建失败");
+      }
+    };
+
+    // 上传文件
+    const handleUpload = async () => {
+      if (!uploadForm.value.file) {
+        message.warning("请选择文件");
+        return;
+      }
+
+      try {
+        isUploading.value = true;
+        uploadProgress.value = 0;
+
+        const formData = new FormData();
+        formData.append("file", uploadForm.value.file);
+        formData.append(
+          "name",
+          uploadForm.value.name || uploadForm.value.file.name,
+        );
+        formData.append("description", uploadForm.value.description);
+        formData.append("category", uploadForm.value.category);
+
+        // 如果在子文件夹中，添加 parent_id
+        if (currentFolderId.value !== 0) {
+          formData.append("parent_id", String(currentFolderId.value));
+        }
+
+        await uploadDocument(formData, {
+          onUploadProgress: (progressEvent: any) => {
+            if (progressEvent.total) {
+              uploadProgress.value = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total,
+              );
+            }
+          },
+        });
+
+        message.success("上传成功");
+        uploadDialogVisible.value = false;
+        uploadForm.value = {
+          name: "",
+          description: "",
+          category: "",
+          file: null,
+        };
+        fileList.value = [];
+        uploadProgress.value = 0;
+        loadCurrentFolder();
+      } catch (error: any) {
+        if (error.response?.data?.msg) {
+          message.error(error.response.data.msg);
+        } else {
+          message.error("上传失败");
+        }
+      } finally {
+        isUploading.value = false;
+      }
+    };
+
+    // 文件选择
+    const handleFileChange = (info: any) => {
+      fileList.value = info.fileList.slice(-1);
+      if (info.fileList.length > 0) {
+        const file = info.fileList[0];
+        uploadForm.value.file = file.originFileObj || file;
+        if (!uploadForm.value.name) {
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          uploadForm.value.name = fileName;
+        }
+      }
+    };
+
+    // 文件夹选择
+    const handleFolderChange = (e: Event) => {
+      const input = e.target as HTMLInputElement;
+      if (input.files && input.files.length > 0) {
+        uploadFolderForm.value.files = Array.from(input.files);
+        folderFileList.value = Array.from(input.files).map((file, index) => ({
+          uid: index,
+          name: file.webkitRelativePath || file.name,
+          status: "done",
+          originFileObj: file,
+        }));
+      }
+    };
+
+    // 上传文件夹
+    const handleUploadFolder = async () => {
+      if (uploadFolderForm.value.files.length === 0) {
+        message.warning("请选择文件夹");
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+
+        // 添加所有文件
+        uploadFolderForm.value.files.forEach((file) => {
+          formData.append("files", file);
+        });
+
+        // 添加文件路径列表
+        const filePaths = uploadFolderForm.value.files.map(
+          (file: any) => file.webkitRelativePath || file.name,
+        );
+        formData.append("file_paths", JSON.stringify(filePaths));
+
+        // 添加元数据
+        formData.append("description", uploadFolderForm.value.description);
+        formData.append("category", uploadFolderForm.value.category);
+
+        // 如果在子文件夹中，添加 parent_id
+        if (currentFolderId.value !== 0) {
+          formData.append("parent_id", String(currentFolderId.value));
+        }
+
+        await uploadFolder(formData);
+        message.success("上传成功");
+        uploadFolderDialogVisible.value = false;
+        uploadFolderForm.value = {
+          description: "",
+          category: "",
+          files: [],
+        };
+        folderFileList.value = [];
+        loadCurrentFolder();
+      } catch (error: any) {
+        if (error.response?.data?.msg) {
+          message.error(error.response.data.msg);
+        } else {
+          message.error("上传失败");
+        }
+      }
+    };
+
+    // 拖拽上传处理
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.value++;
+      if (dragCounter.value === 1) {
+        isDragging.value = true;
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.value--;
+      if (dragCounter.value === 0) {
+        isDragging.value = false;
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging.value = false;
+      dragCounter.value = 0;
+
+      const items = e.dataTransfer?.items;
+      if (!items || items.length === 0) return;
+
+      // 检查是否是文件夹
+      const firstItem = items[0];
+      const entry = firstItem.webkitGetAsEntry?.();
+
+      if (entry?.isDirectory) {
+        // 上传文件夹
+        const files: File[] = [];
+        const filePaths: string[] = [];
+
+        const traverseDirectory = async (
+          dirEntry: any,
+          path: string = "",
+        ): Promise<void> => {
+          const reader = dirEntry.createReader();
+          const entries = await new Promise<any[]>((resolve) => {
+            reader.readEntries((entries: any[]) => resolve(entries));
+          });
+
+          for (const entry of entries) {
+            const fullPath = path ? `${path}/${entry.name}` : entry.name;
+
+            if (entry.isFile) {
+              const file = await new Promise<File>((resolve) => {
+                entry.file((file: File) => resolve(file));
+              });
+              files.push(file);
+              filePaths.push(fullPath);
+            } else if (entry.isDirectory) {
+              await traverseDirectory(entry, fullPath);
+            }
+          }
+        };
+
+        try {
+          isDragUploading.value = true;
+          dragUploadProgress.value = 0;
+          dragUploadStatus.value = "正在读取文件夹...";
+
+          await traverseDirectory(entry, entry.name);
+
+          if (files.length === 0) {
+            message.warning("文件夹为空");
+            isDragUploading.value = false;
+            return;
+          }
+
+          dragUploadStatus.value = `正在上传 ${files.length} 个文件...`;
+
+          const formData = new FormData();
+          files.forEach((file) => formData.append("files", file));
+          formData.append("file_paths", JSON.stringify(filePaths));
+
+          if (currentFolderId.value !== 0) {
+            formData.append("parent_id", String(currentFolderId.value));
+          }
+
+          await uploadFolder(formData, {
+            onUploadProgress: (progressEvent: any) => {
+              if (progressEvent.total) {
+                dragUploadProgress.value = Math.round(
+                  (progressEvent.loaded * 100) / progressEvent.total,
+                );
+              }
+            },
+          });
+
+          message.success("上传成功");
+          loadCurrentFolder();
+        } catch (error: any) {
+          message.error(error.response?.data?.msg || "上传失败");
+        } finally {
+          isDragUploading.value = false;
+          dragUploadProgress.value = 0;
+          dragUploadStatus.value = "";
+        }
+      } else {
+        // 上传单个或多个文件
+        const files: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+
+        if (files.length === 0) return;
+
+        try {
+          isDragUploading.value = true;
+          dragUploadProgress.value = 0;
+          dragUploadStatus.value = `正在上传 ${files.length} 个文件...`;
+
+          let completed = 0;
+          for (const file of files) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("name", file.name.replace(/\.[^/.]+$/, ""));
+
+            if (currentFolderId.value !== 0) {
+              formData.append("parent_id", String(currentFolderId.value));
+            }
+
+            await uploadDocument(formData, {
+              onUploadProgress: (progressEvent: any) => {
+                if (progressEvent.total) {
+                  const fileProgress = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total,
+                  );
+                  dragUploadProgress.value = Math.round(
+                    ((completed + fileProgress / 100) * 100) / files.length,
+                  );
+                }
+              },
+            });
+
+            completed++;
+            dragUploadProgress.value = Math.round(
+              (completed * 100) / files.length,
+            );
+          }
+
+          message.success("上传成功");
+          loadCurrentFolder();
+        } catch (error: any) {
+          message.error(error.response?.data?.msg || "上传失败");
+        } finally {
+          isDragUploading.value = false;
+          dragUploadProgress.value = 0;
+          dragUploadStatus.value = "";
+        }
+      }
+    };
+
+    // 删除项目（文件或文件夹）
+    const handleDelete = async (item: Document) => {
+      if (item.is_folder && item.child_count > 0) {
+        Modal.confirm({
+          title: "删除确认",
+          content: `该文件夹包含 ${item.child_count} 个子项，是否级联删除？`,
+          okText: "级联删除",
+          cancelText: "取消",
+          onOk: async () => {
+            try {
+              await deleteDocument(item.id);
+              message.success("删除成功");
+              loadCurrentFolder();
+            } catch (error) {
+              message.error("删除失败");
+            }
+          },
+        });
+      } else {
+        try {
+          await deleteDocument(item.id);
+          message.success("删除成功");
+          loadCurrentFolder();
+        } catch (error) {
+          message.error("删除失败");
+        }
+      }
+    };
+
+    // 打开文件夹
+    const handleOpenFolder = (folder: Document) => {
+      currentFolderId.value = folder.id;
+      breadcrumb.value.push({ id: folder.id, name: folder.name });
+      page.value = 1;
+      updateRoute(folder.id);
+      loadCurrentFolder();
+    };
+
+    // 面包屑导航
+    const handleBreadcrumbClick = (index: number) => {
+      if (index === breadcrumb.value.length - 1) return;
+
+      breadcrumb.value = breadcrumb.value.slice(0, index + 1);
+      currentFolderId.value = breadcrumb.value[index].id;
+      page.value = 1;
+      updateRoute(currentFolderId.value);
+      loadCurrentFolder();
+    };
+
+    // 返回上一级
+    const handleGoBack = () => {
+      if (breadcrumb.value.length > 1) {
+        breadcrumb.value.pop();
+        currentFolderId.value =
+          breadcrumb.value[breadcrumb.value.length - 1].id;
+        page.value = 1;
+        updateRoute(currentFolderId.value);
+        loadCurrentFolder();
+      }
+    };
+
+    // 预览文件
+    const handlePreview = (doc: Document) => {
+      const imageFormats = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+      const videoFormats = ["mp4", "webm", "avi", "mov"];
+
+      if (imageFormats.includes(doc.format?.toLowerCase())) {
+        previewType.value = "image";
+        previewUrl.value = doc.file_url;
+        previewVisible.value = true;
+      } else if (videoFormats.includes(doc.format?.toLowerCase())) {
+        previewType.value = "video";
+        previewUrl.value = doc.file_url;
+        previewVisible.value = true;
+      } else {
+        window.open(doc.file_url, "_blank");
+      }
+    };
+
+    // 点击卡片
+    const handleCardClick = (item: Document) => {
+      if (item.is_folder) {
+        handleOpenFolder(item);
+      } else {
+        handlePreview(item);
       }
     };
 
     // 搜索
     const handleSearch = (value: string) => {
       keyword.value = value;
-      currentPage.value = 1;
-      loadData();
-    };
-
-    // 类型筛选
-    const handleTypeChange = (value: any) => {
-      docType.value = value === undefined ? undefined : String(value);
-      currentPage.value = 1;
-      loadData();
+      page.value = 1;
+      loadCurrentFolder();
     };
 
     // 分页
-    const handlePageChange = (page: number, size: number) => {
-      currentPage.value = page;
-      pageSize.value = size;
-      loadData();
-    };
-
-    // 分页大小变化
-    const handlePageSizeChange = (size: number) => {
-      pageSize.value = size;
-      currentPage.value = 1;
-      loadData();
-    };
-
-    // 打开上传对话框
-    const handleUpload = () => {
-      uploadVisible.value = true;
-      formState.value = {
-        name: "",
-        description: "",
-        category: "",
-        department: "",
-        project: "",
-        tags: "",
-      };
-      fileList.value = [];
-    };
-
-    // 文件上传前
-    const beforeUpload = (file: any) => {
-      fileList.value = [file];
-      if (!formState.value.name) {
-        // 自动填充文件名（去除扩展名）
-        const fileName = file.name;
-        const lastDotIndex = fileName.lastIndexOf(".");
-        formState.value.name =
-          lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
-      }
-      return false; // 阻止自动上传
-    };
-
-    // 提交上传
-    const handleSubmit = async () => {
-      try {
-        await formRef.value.validate();
-
-        if (fileList.value.length === 0) {
-          message.error("请选择文件");
-          return;
-        }
-
-        uploadLoading.value = true;
-        const formData = new FormData();
-        formData.append("file", fileList.value[0]);
-        formData.append("name", formState.value.name);
-        formData.append("description", formState.value.description);
-        formData.append("category", formState.value.category);
-        formData.append("department", formState.value.department);
-        formData.append("project", formState.value.project);
-        formData.append("tags", formState.value.tags);
-
-        await uploadDocument(formData);
-        message.success("上传成功");
-        uploadVisible.value = false;
-        loadData();
-      } catch (error: any) {
-        // 处理重复文件错误
-        const errorMsg =
-          error.response?.data?.msg || error.message || "上传失败";
-        if (errorMsg.includes("文件已存在")) {
-          Modal.warning({
-            title: "文件已存在",
-            content: errorMsg,
-            okText: "知道了",
-          });
-        } else {
-          message.error(errorMsg);
-        }
-      } finally {
-        uploadLoading.value = false;
-      }
-    };
-
-    // 获取文件图标
-    const getFileIcon = (format: string) => {
-      const iconMap: Record<string, any> = {
-        pdf: FilePdfOutlined,
-        doc: FileWordOutlined,
-        docx: FileWordOutlined,
-        xls: FileExcelOutlined,
-        xlsx: FileExcelOutlined,
-        ppt: FilePptOutlined,
-        pptx: FilePptOutlined,
-        txt: FileTextOutlined,
-        md: FileTextOutlined,
-        zip: FileZipOutlined,
-        rar: FileZipOutlined,
-        "7z": FileZipOutlined,
-        mp4: VideoCameraOutlined,
-        webm: VideoCameraOutlined,
-        avi: VideoCameraOutlined,
-        mov: VideoCameraOutlined,
-      };
-      return iconMap[format?.toLowerCase()] || FileOutlined;
-    };
-
-    // 判断是否可预览
-    const canPreview = (item: any) => {
-      const imageFormats = ["jpg", "jpeg", "png", "gif", "webp"];
-      const videoFormats = ["mp4", "webm"];
-      return (
-        imageFormats.includes(item.format?.toLowerCase()) ||
-        videoFormats.includes(item.format?.toLowerCase())
-      );
-    };
-
-    // 判断是否是视频
-    const isVideo = (item: any) => {
-      const videoFormats = ["mp4", "webm", "avi", "mov"];
-      return videoFormats.includes(item.format?.toLowerCase());
-    };
-
-    // 判断是否是图片
-    const isImage = (item: any) => {
-      const imageFormats = ["jpg", "jpeg", "png", "gif", "webp"];
-      return imageFormats.includes(item.format?.toLowerCase());
-    };
-
-    // 点击项目
-    const handleItemClick = (item: any) => {
-      if (canPreview(item)) {
-        // 可预览的文件，打开预览
-        previewItem.value = item;
-        previewVisible.value = true;
-      } else {
-        // 不可预览的文件，直接下载
-        handleDownload(item);
-      }
-    };
-
-    // 下载文件
-    const handleDownload = (item: any) => {
-      window.open(item.file_url, "_blank");
+    const handlePageChange = (newPage: number, newPageSize: number) => {
+      page.value = newPage;
+      pageSize.value = newPageSize;
+      loadCurrentFolder();
     };
 
     onMounted(() => {
-      loadData();
+      initFromRoute();
+      loadCurrentFolder();
     });
 
     return () => (
@@ -246,342 +637,438 @@ export default defineComponent({
         <ResourceHeader
           stats={[
             {
-              icon: FileOutlined,
-              label: "文档总数",
-              value: total.value,
+              icon: FolderOutlined,
+              label: "文件夹",
+              value: folderCount.value,
               color: "#1890ff",
+            },
+            {
+              icon: FileOutlined,
+              label: "文件",
+              value: fileCount.value,
+              color: "#52c41a",
             },
           ]}
           actions={[
-            {
-              label: "上传文档",
-              icon: UploadOutlined,
-              type: "primary",
-              onClick: handleUpload,
-            },
+            ...(breadcrumb.value.length > 1
+              ? [
+                  {
+                    label: "返回上级",
+                    icon: ArrowLeftOutlined,
+                    onClick: handleGoBack,
+                  },
+                ]
+              : []),
             {
               label: "刷新",
               icon: ReloadOutlined,
               loading: loading.value,
-              onClick: loadData,
+              onClick: loadCurrentFolder,
+            },
+            {
+              label: "新建文件夹",
+              icon: FolderAddOutlined,
+              onClick: () => (createFolderVisible.value = true),
+            },
+            {
+              label: "上传文件",
+              icon: UploadOutlined,
+              type: "primary",
+              onClick: () => (uploadDialogVisible.value = true),
+            },
+            {
+              label: "上传文件夹",
+              icon: FolderAddOutlined,
+              onClick: () => (uploadFolderDialogVisible.value = true),
             },
           ]}
           onSearch={handleSearch}
-          searchPlaceholder="搜索文档名称"
-          filters={[
-            {
-              label: "文档类型",
-              value: docType.value,
-              options: [
-                { label: "全部", value: undefined },
-                { label: "文档", value: "document" },
-                { label: "视频", value: "video" },
-                { label: "压缩包", value: "archive" },
-                { label: "其他", value: "other" },
-              ],
-              onChange: handleTypeChange,
-            },
-          ]}
+          searchPlaceholder="搜索文件名称"
           pageSize={pageSize.value}
-          onPageSizeChange={handlePageSizeChange}
+          onPageSizeChange={(size) => {
+            pageSize.value = size;
+            page.value = 1;
+            loadCurrentFolder();
+          }}
         />
 
-        {/* 网格 */}
+        {/* 面包屑导航 */}
+        <div
+          style={{
+            background: "#fff",
+            padding: "12px 24px",
+            marginBottom: "16px",
+            borderRadius: "8px",
+          }}
+        >
+          <Breadcrumb>
+            {breadcrumb.value.map((item, index) => (
+              <BreadcrumbItem
+                key={index}
+                style={{
+                  cursor:
+                    index < breadcrumb.value.length - 1 ? "pointer" : "default",
+                }}
+                onClick={() => handleBreadcrumbClick(index)}
+              >
+                {item.name}
+              </BreadcrumbItem>
+            ))}
+          </Breadcrumb>
+        </div>
+
+        {/* 拖拽上传区域 */}
+        <div
+          class={`drag-upload-area ${isDragging.value ? "dragging" : ""} ${isDragUploading.value ? "uploading" : ""}`}
+          onDragenter={handleDragEnter}
+          onDragleave={handleDragLeave}
+          onDragover={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {isDragUploading.value ? (
+            <>
+              <div style={{ width: "100%", maxWidth: "400px" }}>
+                <div
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 500,
+                    marginBottom: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  {dragUploadStatus.value}
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      height: "24px",
+                      background: "#f0f0f0",
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${dragUploadProgress.value}%`,
+                        height: "100%",
+                        background: "linear-gradient(90deg, #1890ff, #40a9ff)",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      minWidth: "50px",
+                      textAlign: "right",
+                      fontSize: "16px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {dragUploadProgress.value}%
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <UploadOutlined style={{ fontSize: "32px", color: "#1890ff" }} />
+              <div
+                style={{ marginTop: "8px", fontSize: "16px", fontWeight: 500 }}
+              >
+                {isDragging.value
+                  ? "松开鼠标上传"
+                  : "拖拽文件或文件夹到此处上传"}
+              </div>
+              <div
+                style={{ marginTop: "4px", fontSize: "12px", color: "#999" }}
+              >
+                支持单个文件、多个文件或整个文件夹（最大 10GB）
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 文件和文件夹网格 */}
         <ResourceGrid
           loading={loading.value}
           data={documents.value}
           total={total.value}
-          currentPage={currentPage.value}
+          currentPage={page.value}
           pageSize={pageSize.value}
           onPageChange={handlePageChange}
-          onCardClick={handleItemClick}
-          renderPreview={(item) => {
-            const IconComponent = getFileIcon(item.format);
-
-            // 图片预览
-            if (isImage(item) && item.thumbnail_url) {
+          onCardClick={handleCardClick}
+          renderPreview={(item: Document) => {
+            if (item.is_folder) {
               return (
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                >
-                  <img
-                    src={item.thumbnail_url}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                <div class="preview-placeholder">
+                  <FolderOutlined
+                    style={{ fontSize: "48px", color: "#1890ff" }}
                   />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      fontSize: "32px",
-                      color: "rgba(255, 255, 255, 0.8)",
-                      opacity: 0,
-                      transition: "opacity 0.3s",
-                    }}
-                    class="preview-icon"
-                  >
-                    <EyeOutlined />
+                  <div style={{ marginTop: "8px", fontSize: "12px" }}>
+                    {item.child_count || 0} 个子项
                   </div>
                 </div>
               );
-            }
+            } else {
+              const videoFormats = ["mp4", "webm", "avi", "mov"];
 
-            // 视频预览
-            if (isVideo(item) && item.thumbnail_url) {
-              return (
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                  }}
-                >
-                  <img
+              if (item.thumbnail_url) {
+                return (
+                  <Image
                     src={item.thumbnail_url}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    width="100%"
+                    height="100%"
+                    style={{ objectFit: "cover" }}
+                    preview={false}
                   />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      fontSize: "48px",
-                      color: "rgba(255, 255, 255, 0.9)",
-                    }}
-                  >
-                    <PlayCircleOutlined />
+                );
+              } else if (videoFormats.includes(item.format?.toLowerCase())) {
+                return (
+                  <div class="preview-placeholder">
+                    <PlayCircleOutlined
+                      style={{ fontSize: "48px", color: "#52c41a" }}
+                    />
+                    <div style={{ marginTop: "8px", fontSize: "12px" }}>
+                      点击播放
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              } else {
+                return (
+                  <div class="preview-placeholder">
+                    <FileOutlined style={{ fontSize: "48px", color: "#999" }} />
+                    <div style={{ marginTop: "8px", fontSize: "12px" }}>
+                      {item.format?.toUpperCase()}
+                    </div>
+                  </div>
+                );
+              }
             }
-
-            // 其他文件显示图标
-            if (item.thumbnail_url) {
-              return (
-                <img
-                  src={item.thumbnail_url}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              );
-            }
-
-            return (
-              <div
-                class="preview-placeholder"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  fontSize: "48px",
-                  color: "#1890ff",
-                }}
-              >
-                <IconComponent />
-              </div>
-            );
           }}
-          renderContent={(item) => (
+          renderContent={(item: Document) => (
             <>
               <div class="resource-name" title={item.name}>
+                {item.is_folder && (
+                  <FolderOutlined style={{ marginRight: "4px" }} />
+                )}
                 {item.name}
               </div>
               <div
                 style={{
-                  display: "flex",
-                  gap: "8px",
-                  marginTop: "8px",
-                  flexWrap: "wrap",
-                }}
-              >
-                {item.type && (
-                  <Tag color="blue">
-                    {item.type === "document" && "文档"}
-                    {item.type === "video" && "视频"}
-                    {item.type === "archive" && "压缩包"}
-                    {item.type === "other" && "其他"}
-                  </Tag>
-                )}
-                {item.format && <Tag>{item.format.toUpperCase()}</Tag>}
-                {item.category && <Tag color="green">{item.category}</Tag>}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: "8px",
                   fontSize: "12px",
                   color: "#999",
+                  marginTop: "4px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
+                title={item.description}
               >
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <span>
-                    <EyeOutlined /> {item.view_count || 0}
-                  </span>
-                  <span>
-                    <DownloadOutlined /> {item.download_count || 0}
-                  </span>
-                </div>
-                <span>
-                  {((item.file_size || 0) / 1024 / 1024).toFixed(2)} MB
-                </span>
+                {item.description || "暂无描述"}
               </div>
-              {item.version && (
-                <div
-                  style={{ marginTop: "4px", fontSize: "12px", color: "#999" }}
-                >
-                  版本: {item.version}
+              {!item.is_folder && (
+                <div style={{ marginTop: "8px" }}>
+                  <Tag color="blue">{item.format?.toUpperCase()}</Tag>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {((item.file_size || 0) / 1024 / 1024).toFixed(2)} MB
+                  </span>
                 </div>
               )}
+              <div
+                style={{ fontSize: "12px", color: "#999", marginTop: "4px" }}
+              >
+                {new Date(item.created_at).toLocaleDateString()}
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                {!item.is_folder && (
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={(e: Event) => {
+                      e.stopPropagation();
+                      window.open(item.file_url);
+                    }}
+                  >
+                    下载
+                  </Button>
+                )}
+                <Popconfirm
+                  title={`确定删除该${item.is_folder ? "文件夹" : "文件"}吗？`}
+                  onConfirm={() => handleDelete(item)}
+                >
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={(e: Event) => e.stopPropagation()}
+                  />
+                </Popconfirm>
+              </div>
             </>
           )}
-          onItemClick={handleItemClick}
         />
 
-        {/* 上传对话框 */}
+        {/* 创建文件夹对话框 */}
         <Modal
-          title="上传文档"
-          open={uploadVisible.value}
-          onOk={handleSubmit}
-          onCancel={() => (uploadVisible.value = false)}
-          confirmLoading={uploadLoading.value}
-          width={600}
+          v-model={[createFolderVisible.value, "visible"]}
+          title="新建文件夹"
+          onOk={handleCreateFolder}
         >
-          <Form
-            ref={formRef}
-            model={formState.value}
-            labelCol={{ span: 6 }}
-            wrapperCol={{ span: 18 }}
-          >
-            <Form.Item label="文件">
-              <Upload
-                beforeUpload={beforeUpload}
-                fileList={fileList.value}
-                maxCount={1}
-                onRemove={() => (fileList.value = [])}
-              >
-                <a-button icon={<UploadOutlined />}>选择文件</a-button>
-              </Upload>
-            </Form.Item>
-            <Form.Item
-              label="文档名称"
-              name="name"
-              rules={[{ required: true, message: "请输入文档名称" }]}
-            >
+          <Form layout="vertical">
+            <FormItem label="文件夹名称" required>
               <Input
-                v-model:value={formState.value.name}
-                placeholder="请输入文档名称"
+                v-model={[folderForm.value.name, "value"]}
+                placeholder="请输入文件夹名称"
               />
-            </Form.Item>
-            <Form.Item label="描述" name="description">
-              <Input.TextArea
-                v-model:value={formState.value.description}
+            </FormItem>
+            <FormItem label="描述">
+              <Textarea
+                v-model={[folderForm.value.description, "value"]}
+                placeholder="请输入描述"
+                rows={4}
+              />
+            </FormItem>
+          </Form>
+        </Modal>
+
+        {/* 上传文件对话框 */}
+        <Modal
+          v-model={[uploadDialogVisible.value, "visible"]}
+          title="上传文件"
+          onOk={handleUpload}
+          confirmLoading={isUploading.value}
+          closable={!isUploading.value}
+          maskClosable={!isUploading.value}
+        >
+          <Form layout="vertical">
+            <FormItem label="选择文件" required>
+              <Upload
+                v-model:file-list={fileList.value}
+                beforeUpload={() => false}
+                onChange={handleFileChange}
+                maxCount={1}
+                disabled={isUploading.value}
+              >
+                <Button icon={<UploadOutlined />} disabled={isUploading.value}>
+                  选择文件
+                </Button>
+              </Upload>
+            </FormItem>
+            <FormItem label="文件名称">
+              <Input
+                v-model={[uploadForm.value.name, "value"]}
+                placeholder="留空则使用原文件名"
+                disabled={isUploading.value}
+              />
+            </FormItem>
+            <FormItem label="分类">
+              <Input
+                v-model={[uploadForm.value.category, "value"]}
+                placeholder="请输入分类"
+                disabled={isUploading.value}
+              />
+            </FormItem>
+            <FormItem label="描述">
+              <Textarea
+                v-model={[uploadForm.value.description, "value"]}
                 placeholder="请输入描述"
                 rows={3}
+                disabled={isUploading.value}
               />
-            </Form.Item>
-            <Form.Item label="分类" name="category">
-              <Select
-                v-model:value={formState.value.category}
-                placeholder="请选择分类"
-                allowClear
-              >
-                <Select.Option value="技术文档">技术文档</Select.Option>
-                <Select.Option value="产品文档">产品文档</Select.Option>
-                <Select.Option value="设计文档">设计文档</Select.Option>
-                <Select.Option value="会议记录">会议记录</Select.Option>
-                <Select.Option value="项目资料">项目资料</Select.Option>
-                <Select.Option value="培训资料">培训资料</Select.Option>
-                <Select.Option value="其他">其他</Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item label="部门" name="department">
-              <Input
-                v-model:value={formState.value.department}
-                placeholder="请输入部门"
-              />
-            </Form.Item>
-            <Form.Item label="项目" name="project">
-              <Input
-                v-model:value={formState.value.project}
-                placeholder="请输入项目名称"
-              />
-            </Form.Item>
-            <Form.Item label="标签" name="tags">
-              <Input
-                v-model:value={formState.value.tags}
-                placeholder="多个标签用逗号分隔"
-              />
-            </Form.Item>
+            </FormItem>
+            {isUploading.value && (
+              <FormItem label="上传进度">
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      height: "20px",
+                      background: "#f0f0f0",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${uploadProgress.value}%`,
+                        height: "100%",
+                        background: "#1890ff",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </div>
+                  <span style={{ minWidth: "45px", textAlign: "right" }}>
+                    {uploadProgress.value}%
+                  </span>
+                </div>
+              </FormItem>
+            )}
           </Form>
         </Modal>
 
         {/* 预览对话框 */}
         <Modal
-          title={previewItem.value?.name}
-          open={previewVisible.value}
-          onCancel={() => (previewVisible.value = false)}
-          footer={[
-            <a-button
-              key="download"
-              onClick={() => handleDownload(previewItem.value)}
-            >
-              <DownloadOutlined /> 下载
-            </a-button>,
-            <a-button
-              key="close"
-              type="primary"
-              onClick={() => (previewVisible.value = false)}
-            >
-              关闭
-            </a-button>,
-          ]}
+          v-model={[previewVisible.value, "visible"]}
+          title="预览"
+          footer={null}
           width={800}
         >
-          {previewItem.value && (
-            <div style={{ textAlign: "center" }}>
-              {isImage(previewItem.value) && (
-                <Image
-                  src={previewItem.value.file_url}
-                  style={{ maxWidth: "100%" }}
-                  preview={false}
-                />
-              )}
-              {isVideo(previewItem.value) && (
-                <video
-                  src={previewItem.value.file_url}
-                  controls
-                  style={{ maxWidth: "100%", maxHeight: "600px" }}
-                />
-              )}
-            </div>
+          {previewType.value === "image" && (
+            <img src={previewUrl.value} style={{ width: "100%" }} />
+          )}
+          {previewType.value === "video" && (
+            <video src={previewUrl.value} controls style={{ width: "100%" }} />
           )}
         </Modal>
 
-        <style>{`
-          .resource-grid-item:hover .preview-icon {
-            opacity: 1 !important;
-          }
-        `}</style>
+        {/* 上传文件夹对话框 */}
+        <Modal
+          v-model={[uploadFolderDialogVisible.value, "visible"]}
+          title="上传文件夹"
+          onOk={handleUploadFolder}
+          width={600}
+        >
+          <Form layout="vertical">
+            <FormItem label="选择文件夹" required>
+              <input
+                type="file"
+                webkitdirectory=""
+                directory=""
+                multiple
+                onChange={handleFolderChange}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "4px",
+                }}
+              />
+              {folderFileList.value.length > 0 && (
+                <div style={{ marginTop: "8px", color: "#666" }}>
+                  已选择 {folderFileList.value.length} 个文件
+                </div>
+              )}
+            </FormItem>
+            <FormItem label="分类">
+              <Input
+                v-model={[uploadFolderForm.value.category, "value"]}
+                placeholder="请输入分类"
+              />
+            </FormItem>
+            <FormItem label="描述">
+              <Textarea
+                v-model={[uploadFolderForm.value.description, "value"]}
+                placeholder="请输入描述"
+                rows={3}
+              />
+            </FormItem>
+          </Form>
+        </Modal>
       </div>
     );
   },

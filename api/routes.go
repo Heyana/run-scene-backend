@@ -3,6 +3,7 @@ package api
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -89,7 +90,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	// 7. 可疑活动检测（SQL注入/XSS/路径遍历）
 	router.Use(DetectSuspiciousActivityMiddleware())
 
-	// 8. 请求大小限制（全局100MB）
+	// 8. 请求大小限制（全局100MB，文件上传路由除外）
 	router.Use(RequestSizeLimitMiddleware(100 * 1024 * 1024))
 
 	// 9. 敏感路径保护
@@ -402,18 +403,15 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	}
 	
 	router.GET("/documents/*filepath", func(c *gin.Context) {
-		filepath := c.Param("filepath")
-		if len(filepath) > 0 && filepath[0] == '/' {
-			filepath = filepath[1:]
+		requestPath := c.Param("filepath")
+		if len(requestPath) > 0 && requestPath[0] == '/' {
+			requestPath = requestPath[1:]
 		}
 		
-		fullPath := documentDir
-		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
-			fullPath += "/"
-		}
-		fullPath += filepath
+		// 使用 filepath.Join 正确拼接路径
+		fullPath := filepath.Join(documentDir, requestPath)
 		
-		logger.Log.Infof("请求文件库文件: %s -> %s", filepath, fullPath)
+		logger.Log.Infof("请求文件库文件: %s -> %s", requestPath, fullPath)
 		
 		fileInfo, err := os.Stat(fullPath)
 		if os.IsNotExist(err) {
@@ -518,16 +516,18 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			assets.POST("/:id/use", assetController.IncrementUseCount)         // 记录使用次数
 		}
 
-		// 文件库管理API
+		// 文件库管理API（统一文件和文件夹）
 		documents := api.Group("/documents")
 		{
 			documents.POST("/upload", documentController.Upload)               // 上传文档
-			documents.GET("", documentController.List)                         // 获取文档列表
+			documents.POST("/upload-folder", documentController.UploadFolder)  // 上传文件夹（保持结构）
+			documents.POST("/folder", documentController.CreateFolder)         // 创建文件夹
+			documents.GET("", documentController.List)                         // 获取文档列表（支持parent_id过滤）
 			documents.GET("/statistics", documentController.GetStatistics)     // 获取统计信息
 			documents.GET("/popular", documentController.GetPopular)           // 获取热门文档
 			documents.GET("/:id", documentController.GetDetail)                // 获取文档详情
 			documents.PUT("/:id", documentController.Update)                   // 更新文档信息
-			documents.DELETE("/:id", documentController.Delete)                // 删除文档
+			documents.DELETE("/:id", documentController.Delete)                // 删除文档（支持级联删除文件夹）
 			documents.GET("/:id/download", documentController.Download)        // 下载文档
 			documents.GET("/:id/versions", documentController.GetVersions)     // 获取版本列表
 			documents.GET("/:id/logs", documentController.GetAccessLogs)       // 获取访问日志

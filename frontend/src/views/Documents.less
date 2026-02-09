@@ -1,0 +1,52 @@
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  background: #fafafa;
+}
+
+.resource-name {
+  font-weight: 500;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+// 拖拽上传区域
+.drag-upload-area {
+  background: #fafafa;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  padding: 32px;
+  margin-bottom: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #1890ff;
+    background: #f0f7ff;
+  }
+
+  &.dragging {
+    border-color: #1890ff;
+    background: #e6f7ff;
+    border-style: solid;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+  }
+
+  &.uploading {
+    border-color: #52c41a;
+    background: #f6ffed;
+    border-style: solid;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}

@@ -7,6 +7,9 @@ export interface Document {
   category: string;
   tags: string;
   type: string;
+  parent_id: number | null;
+  is_folder: boolean;
+  child_count: number;
   file_size: number;
   file_path: string;
   file_hash: string;
@@ -14,7 +17,7 @@ export interface Document {
   thumbnail_path: string;
   preview_path: string;
   version: string;
-  parent_id: number | null;
+  parent_version_id: number | null;
   is_latest: boolean;
   department: string;
   project: string;
@@ -43,6 +46,7 @@ export interface DocumentListParams {
   tags?: string;
   sortBy?: string;
   sortOrder?: string;
+  parent_id?: number; // 父文件夹ID
 }
 
 export interface DocumentListResponse {
@@ -63,11 +67,22 @@ export const getDocument = (id: number) => {
 };
 
 // 上传文档
-export const uploadDocument = (formData: FormData) => {
+export const uploadDocument = (formData: FormData, config?: any) => {
   return http.post("/documents/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
+    ...config,
+  });
+};
+
+// 上传文件夹（保持结构）
+export const uploadFolder = (formData: FormData, config?: any) => {
+  return http.post("/documents/upload-folder", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    ...config,
   });
 };
 
@@ -101,4 +116,15 @@ export const getDocumentVersions = (id: number) => {
 // 获取访问日志
 export const getDocumentLogs = (id: number, params?: any) => {
   return http.get(`/documents/${id}/logs`, { params });
+};
+
+// 创建文件夹
+export const createFolder = (data: {
+  name: string;
+  description?: string;
+  parent_id?: number;
+  department?: string;
+  project?: string;
+}) => {
+  return http.post("/documents/folder", data);
 };

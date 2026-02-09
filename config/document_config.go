@@ -16,7 +16,8 @@ type DocumentYAMLConfig struct {
 		BaseURL             string                  `yaml:"base_url"`
 		NASEnabled          bool                    `yaml:"nas_enabled"`
 		NASPath             string                  `yaml:"nas_path"`
-		MaxFileSize         map[string]int64        `yaml:"max_file_size"`
+		MaxFileSize         int64                   `yaml:"max_file_size"`
+		AllowAllFormats     bool                    `yaml:"allow_all_formats"`
 		AllowedFormats      map[string][]string     `yaml:"allowed_formats"`
 		Preview             struct {
 			Enabled         bool `yaml:"enabled"`
@@ -58,8 +59,9 @@ type DocumentConfig struct {
 	NASPath             string
 
 	// 文件限制
-	MaxFileSize    map[string]int64
-	AllowedFormats map[string][]string
+	MaxFileSize     int64               // 统一文件大小限制（字节）
+	AllowAllFormats bool                // 是否允许所有文件格式（开启后不验证文件类型）
+	AllowedFormats  map[string][]string
 
 	// 预览配置
 	PreviewEnabled      bool
@@ -117,12 +119,8 @@ func getDefaultDocumentConfig() *DocumentConfig {
 		NASPath:             "",
 
 		// 文件限制
-		MaxFileSize: map[string]int64{
-			"document": 104857600,  // 100MB
-			"video":    2147483648, // 2GB
-			"archive":  524288000,  // 500MB
-			"other":    52428800,   // 50MB
-		},
+		MaxFileSize: 10737418240, // 10GB
+		AllowAllFormats: true, // 默认允许所有格式
 		AllowedFormats: map[string][]string{
 			"document": {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md"},
 			"video":    {"mp4", "webm", "avi", "mov"},
@@ -193,9 +191,10 @@ func mergeDocumentConfig(config *DocumentConfig, yamlConfig *DocumentYAMLConfig)
 	}
 
 	// 文件限制
-	if len(doc.MaxFileSize) > 0 {
+	if doc.MaxFileSize > 0 {
 		config.MaxFileSize = doc.MaxFileSize
 	}
+	config.AllowAllFormats = doc.AllowAllFormats
 	if len(doc.AllowedFormats) > 0 {
 		config.AllowedFormats = doc.AllowedFormats
 	}
@@ -265,6 +264,20 @@ func applyDocumentEnvOverrides(config *DocumentConfig) {
 	}
 	if val := os.Getenv("DOCUMENT_NAS_PATH"); val != "" {
 		config.NASPath = val
+	}
+
+	// 文件格式限制
+	if val := os.Getenv("DOCUMENT_ALLOW_ALL_FORMATS"); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			config.AllowAllFormats = b
+		}
+	}
+
+	// 文件大小限制
+	if val := os.Getenv("DOCUMENT_MAX_FILE_SIZE"); val != "" {
+		if size, err := strconv.ParseInt(val, 10, 64); err == nil {
+			config.MaxFileSize = size
+		}
 	}
 
 	// 预览配置

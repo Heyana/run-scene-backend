@@ -42,8 +42,8 @@ const isOk = (code: number) => {
 };
 export const http = axios.create({
   baseURL: constApiBasePrefix + "api/",
-
-  timeout: 5000 * 10,
+  //10分钟
+  timeout: 10 * 60 * 1000,
 });
 
 http.interceptors.request.use(

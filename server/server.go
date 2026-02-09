@@ -52,6 +52,14 @@ func NewServer(port int) *Server {
 
 	// 创建路由
 	router := gin.Default()
+	
+	// 配置大文件上传支持
+	// MaxMultipartMemory 只控制内存使用，不限制文件大小
+	// 设置为 32MB，超过部分会写入临时文件
+	router.MaxMultipartMemory = 32 << 20 // 32 MB
+	log.Info("已配置文件上传内存限制: 32MB (超过部分使用临时文件)")
+	log.Info("文件大小限制: 10GB (在应用层验证)")
+	
 	return &Server{
 		port:   port,
 		router: router,
@@ -68,9 +76,15 @@ func (s *Server) AddRoutes(routesFunc func(*gin.Engine)) {
 func (s *Server) Start() error {
 	// 创建HTTP服务器
 	s.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
-		Handler: s.router,
+		Addr:           fmt.Sprintf(":%d", s.port),
+		Handler:        s.router,
+		ReadTimeout:    300 * time.Second, // 5分钟读取超时（支持大文件上传）
+		WriteTimeout:   300 * time.Second, // 5分钟写入超时（支持大文件下载）
+		MaxHeaderBytes: 1 << 20,           // 1MB 最大请求头（不影响请求体大小）
 	}
+	
+	s.log.Info("已配置HTTP超时: 读取=5分钟, 写入=5分钟 (支持大文件传输)")
+	s.log.Info("注意: 请求体大小无限制，由应用层验证（10GB）")
 
 	// 配置静态文件服务
 	if false && GetStaticFSWrapper != nil && GetWebsiteFSWrapper != nil && !config.IsDev() {

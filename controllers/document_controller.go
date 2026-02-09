@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/response"
 	"go_wails_project_manager/services/document"
@@ -70,6 +71,15 @@ func (c *DocumentController) Upload(ctx *gin.Context) {
 		UploadIP:    ctx.ClientIP(),
 	}
 
+	// 解析 parent_id
+	if parentIDStr := ctx.PostForm("parent_id"); parentIDStr != "" {
+		parentID, err := strconv.ParseUint(parentIDStr, 10, 32)
+		if err == nil {
+			pid := uint(parentID)
+			metadata.ParentID = &pid
+		}
+	}
+
 	// 解析标签
 	if tagsStr := ctx.PostForm("tags"); tagsStr != "" {
 		metadata.Tags = strings.Split(tagsStr, ",")
@@ -94,6 +104,115 @@ func (c *DocumentController) Upload(ctx *gin.Context) {
 	}
 
 	response.SuccessWithMsg(ctx, "上传成功", uploadedDoc)
+}
+
+// UploadFolder 上传文件夹（保持结构）
+// @Summary 上传文件夹
+// @Tags 文件库
+// @Accept multipart/form-data
+// @Produce json
+// @Param files formData file true "文件列表"
+// @Param file_paths formData string true "文件路径列表(JSON数组)"
+// @Param parent_id formData int false "父文件夹ID"
+// @Param description formData string false "描述"
+// @Param category formData string false "分类"
+// @Param department formData string false "部门"
+// @Param project formData string false "项目"
+// @Success 200 {object} response.Response
+// @Router /api/documents/upload-folder [post]
+func (c *DocumentController) UploadFolder(ctx *gin.Context) {
+	// 解析文件路径列表
+	filePathsJSON := ctx.PostForm("file_paths")
+	var filePaths []string
+	if err := json.Unmarshal([]byte(filePathsJSON), &filePaths); err != nil {
+		response.Error(ctx, http.StatusBadRequest, "文件路径解析失败: "+err.Error())
+		return
+	}
+
+	// 获取上传的文件
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "获取文件失败: "+err.Error())
+		return
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		response.Error(ctx, http.StatusBadRequest, "没有上传文件")
+		return
+	}
+
+	if len(files) != len(filePaths) {
+		response.Error(ctx, http.StatusBadRequest, "文件数量与路径数量不匹配")
+		return
+	}
+
+	// 解析 parent_id
+	var parentID *uint
+	if parentIDStr := ctx.PostForm("parent_id"); parentIDStr != "" {
+		pid, err := strconv.ParseUint(parentIDStr, 10, 32)
+		if err == nil {
+			p := uint(pid)
+			parentID = &p
+		}
+	}
+
+	// 获取元数据
+	metadata := document.FolderUploadMetadata{
+		Description: ctx.PostForm("description"),
+		Category:    ctx.PostForm("category"),
+		Department:  ctx.PostForm("department"),
+		Project:     ctx.PostForm("project"),
+		UploadedBy:  ctx.GetString("username"),
+		UploadIP:    ctx.ClientIP(),
+		ParentID:    parentID,
+	}
+
+	// 解析标签
+	if tagsStr := ctx.PostForm("tags"); tagsStr != "" {
+		metadata.Tags = strings.Split(tagsStr, ",")
+	}
+
+	// 上传文件夹
+	result, err := c.uploadService.UploadFolder(files, filePaths, metadata)
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "上传失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "上传成功", result)
+}
+
+// CreateFolder 创建文件夹
+// @Summary 创建文件夹
+// @Tags 文件库
+// @Accept json
+// @Produce json
+// @Param body body object true "文件夹信息"
+// @Success 200 {object} response.Response
+// @Router /api/documents/folder [post]
+func (c *DocumentController) CreateFolder(ctx *gin.Context) {
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		ParentID    *uint  `json:"parent_id"`
+		Department  string `json:"department"`
+		Project     string `json:"project"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.Error(ctx, http.StatusBadRequest, "参数错误: "+err.Error())
+		return
+	}
+
+	// 创建文件夹记录
+	folder, err := c.uploadService.CreateFolder(req.Name, req.Description, req.ParentID, req.Department, req.Project, ctx.GetString("username"), ctx.ClientIP())
+	if err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "创建失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "创建成功", folder)
 }
 
 // List 文档列表
@@ -127,6 +246,15 @@ func (c *DocumentController) List(ctx *gin.Context) {
 		Keyword:    ctx.Query("keyword"),
 		SortBy:     ctx.Query("sortBy"),
 		SortOrder:  ctx.Query("sortOrder"),
+	}
+
+	// 解析 parent_id
+	if parentIDStr := ctx.Query("parent_id"); parentIDStr != "" {
+		parentID, err := strconv.ParseUint(parentIDStr, 10, 32)
+		if err == nil {
+			pid := uint(parentID)
+			filters.ParentID = &pid
+		}
 	}
 
 	// 解析标签
@@ -376,6 +504,8 @@ func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB) {
 	{
 		// 基础操作
 		api.POST("/upload", controller.Upload)
+		api.POST("/upload-folder", controller.UploadFolder)
+		api.POST("/folder", controller.CreateFolder) // 创建文件夹
 		api.GET("", controller.List)
 		api.GET("/:id", controller.GetDetail)
 		api.PUT("/:id", controller.Update)
@@ -393,4 +523,3 @@ func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB) {
 		api.GET("/:id/logs", controller.GetAccessLogs)
 	}
 }
-

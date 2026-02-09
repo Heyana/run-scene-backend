@@ -54,6 +54,19 @@ type UploadMetadata struct {
 	Version     string
 	UploadedBy  string
 	UploadIP    string
+	ParentID    *uint // 父文件夹ID
+}
+
+// FolderUploadMetadata 文件夹上传元数据
+type FolderUploadMetadata struct {
+	Description string
+	Category    string
+	Tags        []string
+	Department  string
+	Project     string
+	UploadedBy  string
+	UploadIP    string
+	ParentID    *uint // 父文件夹ID
 }
 
 // Upload 上传文档
@@ -67,15 +80,18 @@ func (s *UploadService) Upload(file *multipart.FileHeader, metadata UploadMetada
 	// 2. 根据格式判断文档类型
 	docType := models.GetDocumentType(format)
 
-	// 3. 验证文件格式
-	if !s.isFormatAllowed(docType, format) {
-		return nil, fmt.Errorf("不支持的文件格式: %s", format)
+	// 3. 验证文件格式（如果启用了格式限制）
+	if !s.config.AllowAllFormats {
+		if !s.isFormatAllowed(docType, format) {
+			return nil, fmt.Errorf("不支持的文件格式: %s", format)
+		}
 	}
 
 	// 4. 验证文件大小
-	if !s.isFileSizeAllowed(docType, file.Size) {
-		maxSize := s.config.MaxFileSize[docType]
-		return nil, fmt.Errorf("文件大小超过限制: %d MB", maxSize/1024/1024)
+	if file.Size > s.config.MaxFileSize {
+		return nil, fmt.Errorf("文件大小超过限制: %.2f GB (最大 %.2f GB)", 
+			float64(file.Size)/1024/1024/1024,
+			float64(s.config.MaxFileSize)/1024/1024/1024)
 	}
 
 	// 5. 计算文件哈希
@@ -111,6 +127,8 @@ func (s *UploadService) Upload(file *multipart.FileHeader, metadata UploadMetada
 		Category:    metadata.Category,
 		Tags:        strings.Join(metadata.Tags, ","),
 		Type:        docType,
+		ParentID:    metadata.ParentID, // 支持父文件夹
+		IsFolder:    false,             // 这是文件，不是文件夹
 		FileSize:    file.Size,
 		FileHash:    fileHash,
 		Format:      format,
@@ -127,8 +145,8 @@ func (s *UploadService) Upload(file *multipart.FileHeader, metadata UploadMetada
 		return nil, fmt.Errorf("创建文档记录失败: %w", err)
 	}
 
-	// 10. 保存文件（使用清洗后的文件名）
-	filePath, err := s.saveFile(file, document.ID)
+	// 10. 保存文件（使用检测到的格式作为扩展名）
+	filePath, err := s.saveFile(file, document.ID, format)
 	if err != nil {
 		s.db.Delete(document) // 回滚
 		return nil, err
@@ -151,33 +169,47 @@ func (s *UploadService) Upload(file *multipart.FileHeader, metadata UploadMetada
 	return document, nil
 }
 
-// saveFile 保存文件到存储
-func (s *UploadService) saveFile(file *multipart.FileHeader, documentID uint) (string, error) {
-	// 读取文件数据
+// saveFile 保存文件到存储（流式处理，避免大文件占用内存）
+func (s *UploadService) saveFile(file *multipart.FileHeader, documentID uint, format string) (string, error) {
+	logger.Log.Infof("开始保存文件: documentID=%d, format=%s, size=%.2fMB", 
+		documentID, format, float64(file.Size)/1024/1024)
+	
+	// 打开文件
 	src, err := file.Open()
 	if err != nil {
+		logger.Log.Errorf("打开上传文件失败: %v", err)
 		return "", fmt.Errorf("打开上传文件失败: %w", err)
 	}
 	defer src.Close()
 
-	data, err := io.ReadAll(src)
+	// 使用检测到的格式作为扩展名
+	fileName := "file." + format
+
+	// 使用年月日分组，避免单个文件夹文件过多
+	// 格式: 2026/02/09/123
+	now := time.Now()
+	subPath := fmt.Sprintf("%d/%02d/%02d/%d", now.Year(), now.Month(), now.Day(), documentID)
+
+	filePath, err := s.storageService.SaveFileStream(subPath, fileName, src, file.Size)
 	if err != nil {
-		return "", fmt.Errorf("读取文件数据失败: %w", err)
+		logger.Log.Errorf("保存文件失败: documentID=%d, error=%v", documentID, err)
+		return "", err
 	}
-
-	// 确定文件名
-	ext := filepath.Ext(file.Filename)
-	fileName := "file" + ext
-
-	// 使用通用存储服务保存
-	subPath := fmt.Sprintf("%d", documentID)
-
-	return s.storageService.SaveFile(subPath, fileName, data)
+	
+	logger.Log.Infof("文件保存成功: documentID=%d, path=%s", documentID, filePath)
+	return filePath, nil
 }
 
 // detectFileFormat 检测文件格式
 func (s *UploadService) detectFileFormat(file *multipart.FileHeader) string {
-	// 打开文件
+	// 1. 优先从文件名获取扩展名
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(file.Filename), "."))
+	if ext != "" {
+		// 如果有扩展名，直接使用
+		return ext
+	}
+
+	// 2. 如果没有扩展名，尝试通过 MIME 类型检测
 	src, err := file.Open()
 	if err != nil {
 		return ""
@@ -196,11 +228,6 @@ func (s *UploadService) detectFileFormat(file *multipart.FileHeader) string {
 
 	// 将 MIME 类型映射到文件扩展名
 	format := s.mimeTypeToFormat(mimeType)
-
-	// 如果无法从 MIME 检测，尝试从文件名获取
-	if format == "" {
-		format = strings.ToLower(strings.TrimPrefix(filepath.Ext(file.Filename), "."))
-	}
 
 	return format
 }
@@ -261,16 +288,6 @@ func (s *UploadService) isFormatAllowed(docType, format string) bool {
 	}
 
 	return false
-}
-
-// isFileSizeAllowed 检查文件大小是否允许
-func (s *UploadService) isFileSizeAllowed(docType string, size int64) bool {
-	maxSize, ok := s.config.MaxFileSize[docType]
-	if !ok {
-		return false
-	}
-
-	return size <= maxSize
 }
 
 // calculateHash 计算文件哈希
@@ -402,3 +419,171 @@ func (s *UploadService) sanitizeFileName(filename string) string {
 	return cleanName
 }
 
+
+// CreateFolder 创建文件夹
+func (s *UploadService) CreateFolder(name, description string, parentID *uint, department, project, createdBy, createdIP string) (*models.Document, error) {
+	// 验证父文件夹存在
+	if parentID != nil {
+		var parent models.Document
+		if err := s.db.First(&parent, *parentID).Error; err != nil {
+			return nil, fmt.Errorf("父文件夹不存在")
+		}
+		if !parent.IsFolder {
+			return nil, fmt.Errorf("父级不是文件夹")
+		}
+	}
+
+	// 创建文件夹记录
+	folder := &models.Document{
+		Name:        name,
+		Description: description,
+		Type:        models.TypeFolder,
+		ParentID:    parentID,
+		IsFolder:    true,
+		Department:  department,
+		Project:     project,
+		UploadedBy:  createdBy,
+		UploadIP:    createdIP,
+	}
+
+	if err := s.db.Create(folder).Error; err != nil {
+		return nil, fmt.Errorf("创建文件夹失败: %w", err)
+	}
+
+	// 记录访问日志
+	s.logAccess(folder.ID, "create_folder", createdBy, createdIP)
+
+	return folder, nil
+}
+
+
+// UploadFolder 上传文件夹（保持结构）
+func (s *UploadService) UploadFolder(files []*multipart.FileHeader, filePaths []string, metadata FolderUploadMetadata) (map[string]interface{}, error) {
+	if len(files) != len(filePaths) {
+		return nil, fmt.Errorf("文件数量与路径数量不匹配")
+	}
+
+	// 提取根文件夹名（第一层目录）
+	var rootFolderName string
+	if len(filePaths) > 0 {
+		parts := strings.Split(strings.ReplaceAll(filePaths[0], "\\", "/"), "/")
+		if len(parts) > 1 {
+			rootFolderName = parts[0]
+			logger.Log.Infof("检测到根文件夹: %s", rootFolderName)
+		}
+	}
+
+	// 创建根文件夹
+	rootFolder, err := s.CreateFolder(
+		rootFolderName,
+		metadata.Description,
+		metadata.ParentID,
+		metadata.Department,
+		metadata.Project,
+		metadata.UploadedBy,
+		metadata.UploadIP,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("创建根文件夹失败: %w", err)
+	}
+
+	// 文件夹映射：路径 -> Document ID
+	folderMap := make(map[string]uint)
+	folderMap[rootFolderName] = rootFolder.ID
+
+	// 统计信息
+	uploadedFiles := 0
+	createdFolders := 1 // 已创建根文件夹
+	skippedFiles := 0
+	var errors []string
+
+	// 遍历所有文件
+	for i, file := range files {
+		originalPath := filePaths[i]
+		
+		// 去掉根文件夹前缀
+		relativePath := originalPath
+		if rootFolderName != "" {
+			prefix := rootFolderName + "/"
+			relativePath = strings.TrimPrefix(strings.ReplaceAll(originalPath, "\\", "/"), prefix)
+		}
+
+		// 解析路径，创建必要的文件夹
+		parts := strings.Split(relativePath, "/")
+		fileName := parts[len(parts)-1]
+		
+		// 确定父文件夹ID
+		var parentFolderID uint = rootFolder.ID
+		
+		// 如果有子文件夹，逐层创建
+		if len(parts) > 1 {
+			currentPath := rootFolderName
+			for j := 0; j < len(parts)-1; j++ {
+				folderName := parts[j]
+				currentPath = currentPath + "/" + folderName
+				
+				// 检查文件夹是否已创建
+				if folderID, exists := folderMap[currentPath]; exists {
+					parentFolderID = folderID
+				} else {
+					// 创建新文件夹
+					newFolder, err := s.CreateFolder(
+						folderName,
+						"",
+						&parentFolderID,
+						metadata.Department,
+						metadata.Project,
+						metadata.UploadedBy,
+						metadata.UploadIP,
+					)
+					if err != nil {
+						logger.Log.Errorf("创建文件夹失败: %s, 错误: %v", folderName, err)
+						errors = append(errors, fmt.Sprintf("创建文件夹 %s 失败: %v", folderName, err))
+						continue
+					}
+					folderMap[currentPath] = newFolder.ID
+					parentFolderID = newFolder.ID
+					createdFolders++
+				}
+			}
+		}
+
+		// 上传文件
+		fileMetadata := UploadMetadata{
+			Name:        s.sanitizeFileName(fileName),
+			Description: metadata.Description,
+			Category:    metadata.Category,
+			Tags:        metadata.Tags,
+			Department:  metadata.Department,
+			Project:     metadata.Project,
+			UploadedBy:  metadata.UploadedBy,
+			UploadIP:    metadata.UploadIP,
+			ParentID:    &parentFolderID,
+		}
+
+		_, err := s.Upload(file, fileMetadata)
+		if err != nil {
+			logger.Log.Errorf("上传文件失败: %s, 错误: %v", fileName, err)
+			errors = append(errors, fmt.Sprintf("上传文件 %s 失败: %v", fileName, err))
+			skippedFiles++
+		} else {
+			uploadedFiles++
+		}
+	}
+
+	// 返回结果
+	result := map[string]interface{}{
+		"root_folder_id":   rootFolder.ID,
+		"root_folder_name": rootFolder.Name,
+		"uploaded_files":   uploadedFiles,
+		"created_folders":  createdFolders,
+		"skipped_files":    skippedFiles,
+		"total_files":      len(files),
+	}
+
+	if len(errors) > 0 {
+		result["errors"] = errors
+	}
+
+	return result, nil
+}

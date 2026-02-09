@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go_wails_project_manager/models"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -23,7 +25,7 @@ func NewQueryService(db *gorm.DB) *QueryService {
 
 // QueryFilters 查询过滤器
 type QueryFilters struct {
-	Type       string   // document, video, archive, other
+	Type       string   // folder, document, video, archive, other
 	Category   string
 	Tags       []string
 	Format     string
@@ -33,11 +35,23 @@ type QueryFilters struct {
 	Keyword    string
 	SortBy     string // name, created_at, download_count, file_size
 	SortOrder  string // asc, desc
+	ParentID   *uint  // 父文件夹ID，nil表示查询所有，0表示根目录
 }
 
 // List 分页查询
 func (q *QueryService) List(page, pageSize int, filters QueryFilters) ([]*models.Document, int64, error) {
 	query := q.db.Model(&models.Document{}).Where("is_latest = ?", true)
+
+	// 父文件夹过滤
+	if filters.ParentID != nil {
+		if *filters.ParentID == 0 {
+			// 查询根目录
+			query = query.Where("parent_id IS NULL")
+		} else {
+			// 查询指定文件夹下的内容
+			query = query.Where("parent_id = ?", *filters.ParentID)
+		}
+	}
 
 	// 应用过滤条件
 	if filters.Type != "" {
@@ -145,36 +159,70 @@ func (q *QueryService) GetVersions(documentID uint) ([]*models.Document, error) 
 	return versions, nil
 }
 
-// Delete 删除文档
+// Delete 删除文档（硬删除，包括物理文件）
 func (q *QueryService) Delete(id uint) error {
 	var document models.Document
 	if err := q.db.First(&document, id).Error; err != nil {
 		return err
 	}
 
-	// 删除文件
-	if document.FilePath != "" {
-		os.Remove(document.FilePath)
+	// 如果是文件夹，递归删除所有子项
+	if document.IsFolder {
+		var children []*models.Document
+		if err := q.db.Where("parent_id = ?", id).Find(&children).Error; err != nil {
+			return fmt.Errorf("查询子项失败: %w", err)
+		}
+
+		// 递归删除所有子项
+		for _, child := range children {
+			if err := q.Delete(child.ID); err != nil {
+				return fmt.Errorf("删除子项失败 (ID: %d): %w", child.ID, err)
+			}
+		}
+	}
+
+	// 删除物理文件
+	if document.FilePath != "" && !document.IsFolder {
+		// FilePath 格式: static/documents/2026/02/09/123/file.zip
+		// 提取目录路径: static/documents/2026/02/09/123
+		// 使用正斜杠分割（数据库中存储的是正斜杠）
+		parts := strings.Split(document.FilePath, "/")
+		if len(parts) >= 2 {
+			// 重新组合为目录路径（去掉最后的文件名）
+			dirPath := filepath.Join(parts[:len(parts)-1]...)
+			
+			// 删除整个目录（包含文件和可能的其他资源）
+			if err := os.RemoveAll(dirPath); err != nil && !os.IsNotExist(err) {
+				// 文件删除失败只记录警告，不阻止数据库删除
+				fmt.Printf("警告: 删除文件目录失败 %s: %v\n", dirPath, err)
+			} else {
+				fmt.Printf("已删除文件目录: %s\n", dirPath)
+			}
+		}
 	}
 
 	// 删除缩略图
 	if document.ThumbnailPath != "" {
-		os.Remove(document.ThumbnailPath)
+		if err := os.Remove(document.ThumbnailPath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("警告: 删除缩略图失败 %s: %v\n", document.ThumbnailPath, err)
+		}
 	}
 
 	// 删除预览
 	if document.PreviewPath != "" {
-		os.RemoveAll(document.PreviewPath)
+		if err := os.RemoveAll(document.PreviewPath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("警告: 删除预览失败 %s: %v\n", document.PreviewPath, err)
+		}
 	}
 
 	// 删除元数据
-	q.db.Where("document_id = ?", id).Delete(&models.DocumentMetadata{})
+	q.db.Unscoped().Where("document_id = ?", id).Delete(&models.DocumentMetadata{})
 
-	// 删除访问日志（可选，根据需求决定是否保留）
-	// q.db.Where("document_id = ?", id).Delete(&models.DocumentAccessLog{})
+	// 删除访问日志
+	q.db.Unscoped().Where("document_id = ?", id).Delete(&models.DocumentAccessLog{})
 
-	// 删除文档记录
-	return q.db.Delete(&document).Error
+	// 硬删除文档记录（使用 Unscoped 跳过软删除）
+	return q.db.Unscoped().Delete(&document).Error
 }
 
 // Update 更新文档信息

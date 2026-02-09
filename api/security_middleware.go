@@ -595,6 +595,14 @@ func detectXSS(c *gin.Context) bool {
 // RequestSizeLimitMiddleware 限制请求体大小
 func RequestSizeLimitMiddleware(maxSize int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 文件上传路由跳过大小限制（在应用层验证）
+		if strings.HasPrefix(c.Request.URL.Path, "/api/documents/upload") ||
+		   strings.HasPrefix(c.Request.URL.Path, "/api/models/upload") ||
+		   strings.HasPrefix(c.Request.URL.Path, "/api/assets/upload") {
+			c.Next()
+			return
+		}
+		
 		// 读取Content-Length头
 		if c.Request.ContentLength > maxSize {
 			c.JSON(http.StatusRequestEntityTooLarge, gin.H{

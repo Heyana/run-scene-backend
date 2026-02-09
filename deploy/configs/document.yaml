@@ -1,0 +1,91 @@
+# 文件库配置文件
+
+document:
+  # 本地存储配置
+  local_storage_enabled: false # 是否保存到本地（如果只用 NAS，可以关闭）
+  storage_dir: "static/documents" # 本地存储路径（相对于项目根目录）
+
+  # 网络访问配置
+  base_url: "http://192.168.3.10:23359/documents" # 文件的网络访问地址
+
+  # NAS 存储配置（推荐使用 SMB 网络共享）
+  nas_enabled: true # 是否启用 NAS 存储
+  nas_path: "/vol1/1003/project/editor_v2/static/documents"
+
+  # 文件大小限制
+  max_file_size: 10737418240 # 10GB - 统一上限（单位：字节）
+
+  # 允许的文件格式
+  allow_all_formats: true # 是否允许所有文件格式（开启后不验证文件类型）
+  allowed_formats:
+    document:
+      - pdf
+      - doc
+      - docx
+      - xls
+      - xlsx
+      - ppt
+      - pptx
+      - txt
+      - md
+    video:
+      - mp4
+      - webm
+      - avi
+      - mov
+    archive:
+      - zip
+      - rar
+      - 7z
+    other:
+      - jpg
+      - png
+      - gif
+      - mp3
+      - wav
+
+  # 预览配置
+  preview:
+    enabled: true # 是否启用预览功能
+    pdf_to_image: true # PDF转图片预览
+    max_preview_pages: 10 # 最多预览页数
+    preview_quality: 85 # 预览图质量（0-100）
+    preview_width: 800 # 预览图宽度（像素）
+
+  # 视频处理配置
+  video:
+    ffmpeg_path: "ffmpeg" # FFmpeg 可执行文件路径
+    thumbnail_time: 1.0 # 截图时间点（秒）
+    thumbnail_count: 3 # 生成缩略图数量
+
+  # 版本控制
+  version_control:
+    enabled: true # 是否启用版本控制
+    max_versions: 10 # 保留最大版本数
+    auto_version: true # 自动生成版本号
+
+  # 权限配置
+  permission:
+    enable_department: true # 启用部门隔离
+    enable_project: true # 启用项目隔离
+    default_public: false # 默认是否公开
+
+  # 日志配置
+  log:
+    enabled: true # 是否启用日志
+    log_access: true # 记录访问日志
+    log_retention_days: 90 # 日志保留天数
+
+
+# ===========================================
+# 环境变量覆盖说明
+# ===========================================
+# 以上所有配置都可以通过环境变量覆盖，变量名规则：
+# - document.local_storage_enabled -> DOCUMENT_LOCAL_STORAGE_ENABLED
+# - document.storage_dir -> DOCUMENT_STORAGE_DIR
+# - document.base_url -> DOCUMENT_BASE_URL
+# - document.nas_enabled -> DOCUMENT_NAS_ENABLED
+# - document.nas_path -> DOCUMENT_NAS_PATH
+# 等等...
+#
+# 优先级: 环境变量 > YAML配置文件 > 默认值

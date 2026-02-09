@@ -12,14 +12,11 @@ document:
   nas_enabled: true # 是否启用 NAS 存储
   nas_path: "\\\\192.168.3.10\\project\\editor_v2\\static\\documents" # NAS SMB 共享路径（Windows 格式）
 
-  # 文件限制（按类型，单位：字节）
-  max_file_size:
-    document: 104857600 # 100MB - PDF, Word, Excel, PPT, TXT
-    video: 2147483648 # 2GB - MP4, WebM, AVI, MOV
-    archive: 524288000 # 500MB - ZIP, RAR, 7Z
-    other: 52428800 # 50MB - 其他类型
+  # 文件大小限制
+  max_file_size: 10737418240 # 10GB - 统一上限（单位：字节）
 
   # 允许的文件格式
+  allow_all_formats: true # 是否允许所有文件格式（开启后不验证文件类型）
   allowed_formats:
     document:
       - pdf
