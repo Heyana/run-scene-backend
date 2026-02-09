@@ -368,7 +368,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		c.File(fullPath)
 	})
 
-	// 项目文件静态服务
+	// 项目文件静态服务（当前版本）
 	projectDir := "./static/projects"
 	if config.ProjectAppConfig != nil && config.ProjectAppConfig.NASEnabled && config.ProjectAppConfig.NASPath != "" {
 		projectDir = config.ProjectAppConfig.NASPath
@@ -377,84 +377,19 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		logger.Log.Infof("项目管理使用本地路径提供静态文件服务: %s", projectDir)
 	}
 	
-	router.GET("/projects/*filepath", func(c *gin.Context) {
-		filepath := c.Param("filepath")
-		if len(filepath) > 0 && filepath[0] == '/' {
-			filepath = filepath[1:]
-		}
-		
-		// 检查是否是项目根路径访问（如 /projects/123/ 或 /projects/123）
-		// 如果是，重定向到最新版本
-		parts := strings.Split(strings.TrimSuffix(filepath, "/"), "/")
-		
 		// 如果只有一个部分（项目名称），说明是访问项目根路径
-		if len(parts) == 1 && parts[0] != "" {
-			projectName := parts[0]
-			
-			// 查询该项目的最新版本
-			db := database.MustGetDB()
-			var project struct {
-				CurrentVersion string `gorm:"column:current_version"`
-			}
-			err := db.Table("project").Select("current_version").Where("name = ?", projectName).First(&project).Error
-			if err == nil && project.CurrentVersion != "" {
-				// 重定向到最新版本
-				redirectURL := "/projects/" + projectName + "/v" + project.CurrentVersion + "/"
-				logger.Log.Infof("重定向项目 %s 到最新版本: %s", projectName, redirectURL)
-				c.Redirect(302, redirectURL)
-				return
-			}
-		}
-		
-		// 如果是两个部分，检查第二部分是否是 index.html
-		if len(parts) == 2 && parts[0] != "" && parts[1] == "index.html" {
-			projectName := parts[0]
-			
-			// 查询该项目的最新版本
-			db := database.MustGetDB()
-			var project struct {
-				CurrentVersion string `gorm:"column:current_version"`
-			}
-			err := db.Table("projects").Select("current_version").Where("name = ?", projectName).First(&project).Error
-			if err == nil && project.CurrentVersion != "" {
-				// 重定向到最新版本的 index.html
-				redirectURL := "/projects/" + projectName + "/v" + project.CurrentVersion + "/index.html"
-				logger.Log.Infof("重定向项目 %s 到最新版本: %s", projectName, redirectURL)
-				c.Redirect(302, redirectURL)
-				return
-			}
-		}
-		
-		fullPath := projectDir
-		if !strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "\\") {
-			fullPath += "/"
-		}
-		fullPath += filepath
-		
-		logger.Log.Infof("请求项目文件: %s -> %s", filepath, fullPath)
-		
-		fileInfo, err := os.Stat(fullPath)
-		if os.IsNotExist(err) {
-			logger.Log.Warnf("项目文件不存在: %s", fullPath)
-			c.JSON(404, gin.H{
-				"error": "文件不存在",
-				"path":  fullPath,
-			})
-			return
-		}
-		if err != nil {
-			logger.Log.Errorf("访问项目文件失败: %s, 错误: %v", fullPath, err)
-			c.JSON(500, gin.H{
-				"error": "访问文件失败",
-				"path":  fullPath,
-				"msg":   err.Error(),
-			})
-			return
-		}
-		
-		logger.Log.Infof("项目文件存在，大小: %d bytes", fileInfo.Size())
-		c.File(fullPath)
-	})
+	router.Static("/projects", projectDir)
+	
+	// 项目历史版本静态服务
+	projectHistoryDir := "./static/project_histories"
+	if config.ProjectAppConfig != nil && config.ProjectAppConfig.NASEnabled && config.ProjectAppConfig.NASHistoryPath != "" {
+		projectHistoryDir = config.ProjectAppConfig.NASHistoryPath
+		logger.Log.Infof("项目历史版本使用 NAS 路径提供静态文件服务: %s", projectHistoryDir)
+	} else {
+		logger.Log.Infof("项目历史版本使用本地路径提供静态文件服务: %s", projectHistoryDir)
+	}
+	
+	router.Static("/project_histories", projectHistoryDir)
 
 	// 设置API路由组
 	api := router.Group("/api")

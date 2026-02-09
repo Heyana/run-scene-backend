@@ -1,4 +1,4 @@
-# 项目管理配置
+# 项目管理配置（Linux 服务器版本）
 project:
   # 本地存储配置
   local_storage_enabled: false
@@ -7,9 +7,10 @@ project:
   # 网络访问配置
   base_url: "http://192.168.3.10:23359/projects"
 
-  # NAS存储配置
-  nas_enabled: true # 是否启用 NAS 存储
-  nas_path: "/vol1/1003/project/editor_v2/static/projects" # NAS 路径（Linux 格式）
+  # NAS存储配置（Linux 路径格式）
+  nas_enabled: true
+  nas_path: "/vol1/1003/project/editor_v2/static/projects"
+  nas_history_path: "/vol1/1003/project/editor_v2/static/project_histories"
 
   # 文件限制
   max_file_size: 524288000 # 500MB

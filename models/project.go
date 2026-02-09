@@ -49,6 +49,9 @@ type ProjectVersion struct {
 	// 解压后的目录路径（用于预览）
 	ExtractedPath string   `gorm:"size:512" json:"extracted_path"`
 	
+	// 历史版本解压路径
+	HistoryPath   string   `gorm:"size:512" json:"history_path"`
+	
 	// 截图路径
 	ThumbnailPath string   `gorm:"size:512" json:"thumbnail_path"`
 	
@@ -77,8 +80,14 @@ func (pv *ProjectVersion) AfterFind(tx *gorm.DB) error {
 	}
 	
 	// 构建预览URL
-	if pv.ExtractedPath != "" {
-		pv.PreviewURL = buildPreviewURL(pv.ExtractedPath)
+	// 优先使用 HistoryPath（历史版本），如果没有则使用 ExtractedPath（当前版本）
+	previewPath := pv.HistoryPath
+	if previewPath == "" {
+		previewPath = pv.ExtractedPath
+	}
+	
+	if previewPath != "" {
+		pv.PreviewURL = buildPreviewURL(previewPath)
 	}
 	
 	// 构建缩略图URL
@@ -98,12 +107,35 @@ func buildProjectURL(path string) string {
 	// 统一路径分隔符
 	path = strings.ReplaceAll(path, "\\", "/")
 	
-	// 提取相对路径（移除NAS路径前缀）
-	relativePath := extractProjectRelativePath(path)
+	// 如果是相对路径，直接使用
+	relativePath := path
+	
+	// 如果是绝对路径，提取相对路径
+	if strings.Contains(path, "/static/") || strings.Contains(path, "\\static\\") {
+		relativePath = extractProjectRelativePath(path)
+	}
 	
 	if config.ProjectAppConfig != nil && config.ProjectAppConfig.BaseURL != "" {
 		baseURL := strings.TrimSuffix(config.ProjectAppConfig.BaseURL, "/")
-		return baseURL + "/" + relativePath
+		
+		// 判断相对路径是否已经包含 projects/ 或 project_histories/
+		if strings.HasPrefix(relativePath, "projects/") {
+			// 已经包含 projects/，需要去掉 baseURL 中的 /projects
+			baseURLWithoutProjects := strings.TrimSuffix(baseURL, "/projects")
+			return baseURLWithoutProjects + "/" + relativePath
+		} else if strings.HasPrefix(relativePath, "project_histories/") {
+			// 已经包含 project_histories/
+			baseURLWithoutProjects := strings.TrimSuffix(baseURL, "/projects")
+			return baseURLWithoutProjects + "/" + relativePath
+		} else {
+			// 不包含前缀，直接拼接
+			return baseURL + "/" + relativePath
+		}
+	}
+	
+	// 如果没有配置 baseURL，判断是否需要添加前缀
+	if strings.HasPrefix(relativePath, "projects/") || strings.HasPrefix(relativePath, "project_histories/") {
+		return "/" + relativePath
 	}
 	
 	return "/projects/" + relativePath
@@ -118,15 +150,62 @@ func buildPreviewURL(extractedPath string) string {
 	// 统一路径分隔符
 	path := strings.ReplaceAll(extractedPath, "\\", "/")
 	
-	// 提取相对路径
-	relativePath := extractProjectRelativePath(path)
+	// 判断是当前版本还是历史版本
+	// 相对路径格式:
+	// - 当前版本: projects/项目名称/
+	// - 历史版本: project_histories/项目名称/v1.0.0/extracted/
+	
+	var relativePath string
+	var urlPrefix string
+	
+	// 如果是绝对路径，先提取相对路径
+	if strings.Contains(path, "/static/") || strings.Contains(path, "\\static\\") {
+		staticIdx := strings.LastIndex(path, "/static/")
+		if staticIdx == -1 {
+			staticIdx = strings.LastIndex(path, "static/")
+			if staticIdx != -1 {
+				path = path[staticIdx+7:] // 跳过 "static/"
+			}
+		} else {
+			path = path[staticIdx+8:] // 跳过 "/static/"
+		}
+	}
+	
+	if strings.HasPrefix(path, "project_histories/") || strings.Contains(path, "/project_histories/") {
+		// 历史版本
+		urlPrefix = "/project_histories"
+		// 提取 project_histories/ 之后的部分
+		idx := strings.Index(path, "project_histories/")
+		if idx != -1 {
+			relativePath = path[idx+18:] // 跳过 "project_histories/"
+		} else {
+			relativePath = path
+		}
+	} else {
+		// 当前版本
+		urlPrefix = "/projects"
+		// 提取 projects/ 之后的部分
+		idx := strings.Index(path, "projects/")
+		if idx != -1 {
+			relativePath = path[idx+9:] // 跳过 "projects/"
+		} else {
+			relativePath = path
+		}
+	}
 	
 	if config.ProjectAppConfig != nil && config.ProjectAppConfig.BaseURL != "" {
 		baseURL := strings.TrimSuffix(config.ProjectAppConfig.BaseURL, "/")
-		return baseURL + "/" + relativePath + "/index.html"
+		// 替换 /projects 为实际的 baseURL
+		if urlPrefix == "/projects" {
+			return baseURL + "/" + relativePath + "/index.html"
+		} else {
+			// 历史版本使用不同的 baseURL
+			historyBaseURL := strings.Replace(baseURL, "/projects", "/project_histories", 1)
+			return historyBaseURL + "/" + relativePath + "/index.html"
+		}
 	}
-	
-	return "/projects/" + relativePath + "/index.html"
+
+	return urlPrefix + "/" + relativePath + "/index.html"
 }
 
 // extractProjectRelativePath 从完整路径提取相对路径

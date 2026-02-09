@@ -44,9 +44,10 @@ func GenerateScreenshot(url string, outputPath string, opts *ScreenshotOptions) 
 	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
 	defer cancel()
 
-	// 创建临时用户数据目录
-	userDataDir := filepath.Join(os.TempDir(), "chromium-screenshot")
+	// 创建临时用户数据目录（使用随机名称避免冲突）
+	userDataDir := filepath.Join(os.TempDir(), fmt.Sprintf("chromium-screenshot-%d", time.Now().UnixNano()))
 	os.MkdirAll(userDataDir, 0755)
+	defer os.RemoveAll(userDataDir) // 截图完成后清理
 
 	// 创建 chromedp context，禁用 CSP 和其他安全限制
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -100,9 +101,10 @@ func GenerateThumbnail(url string, outputPath string, width, height int64) error
 	ctx, cancel := context.WithTimeout(context.Background(), opts.Timeout)
 	defer cancel()
 
-	// 创建临时用户数据目录
-	userDataDir := filepath.Join(os.TempDir(), "chromium-screenshot")
+	// 创建临时用户数据目录（使用随机名称避免冲突）
+	userDataDir := filepath.Join(os.TempDir(), fmt.Sprintf("chromium-screenshot-%d", time.Now().UnixNano()))
 	os.MkdirAll(userDataDir, 0755)
+	defer os.RemoveAll(userDataDir) // 截图完成后清理
 
 	// 创建 chromedp context，禁用 CSP 和其他安全限制
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],

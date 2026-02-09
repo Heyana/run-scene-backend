@@ -13,6 +13,7 @@ type ProjectConfig struct {
 	BaseURL               string
 	NASEnabled            bool
 	NASPath               string
+	NASHistoryPath        string // 历史版本存储路径
 	MaxFileSize           int64
 	MaxProjectSize        int64
 	DefaultInitialVersion string
@@ -31,6 +32,7 @@ type ProjectYAMLConfig struct {
 		BaseURL               string `yaml:"base_url"`
 		NASEnabled            bool   `yaml:"nas_enabled"`
 		NASPath               string `yaml:"nas_path"`
+		NASHistoryPath        string `yaml:"nas_history_path"`
 		MaxFileSize           int64  `yaml:"max_file_size"`
 		MaxProjectSize        int64  `yaml:"max_project_size"`
 		DefaultInitialVersion string `yaml:"default_initial_version"`
@@ -57,6 +59,7 @@ func LoadProjectConfig() error {
 		BaseURL:               getEnvOrDefault("PROJECT_BASE_URL", yamlConfig.Project.BaseURL),
 		NASEnabled:            getEnvAsBoolOrDefault("PROJECT_NAS_ENABLED", yamlConfig.Project.NASEnabled),
 		NASPath:               getEnvOrDefault("PROJECT_NAS_PATH", yamlConfig.Project.NASPath),
+		NASHistoryPath:        getEnvOrDefault("PROJECT_NAS_HISTORY_PATH", yamlConfig.Project.NASHistoryPath),
 		MaxFileSize:           getEnvAsInt64OrDefault("PROJECT_MAX_FILE_SIZE", yamlConfig.Project.MaxFileSize),
 		MaxProjectSize:        getEnvAsInt64OrDefault("PROJECT_MAX_PROJECT_SIZE", yamlConfig.Project.MaxProjectSize),
 		DefaultInitialVersion: getEnvOrDefault("PROJECT_DEFAULT_INITIAL_VERSION", yamlConfig.Project.DefaultInitialVersion),
@@ -76,9 +79,10 @@ func loadProjectYAMLConfig() *ProjectYAMLConfig {
 	defaultConfig := &ProjectYAMLConfig{}
 	defaultConfig.Project.LocalStorageEnabled = false
 	defaultConfig.Project.StorageDir = "static/projects"
-	defaultConfig.Project.BaseURL = "http://192.168.3.39:23359/projects"
+	defaultConfig.Project.BaseURL = "http://192.168.3.10:23359/projects"
 	defaultConfig.Project.NASEnabled = true
-	defaultConfig.Project.NASPath = "\\\\192.168.3.10\\project\\editor_v2\\static\\projects"
+	defaultConfig.Project.NASPath = "/vol1/1003/project/editor_v2/static/projects"
+	defaultConfig.Project.NASHistoryPath = "/vol1/1003/project/editor_v2/static/project_histories"
 	defaultConfig.Project.MaxFileSize = 524288000      // 500MB
 	defaultConfig.Project.MaxProjectSize = 1073741824  // 1GB
 	defaultConfig.Project.DefaultInitialVersion = "1.0.0"

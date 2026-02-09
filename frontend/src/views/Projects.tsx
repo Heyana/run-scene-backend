@@ -230,13 +230,13 @@ export default defineComponent({
 
       if (project.thumbnail_url) {
         // 从 thumbnail_url 中提取 baseURL
-        // 例如: http://192.168.3.39:23359/projects/123/v1.0.6/thumbnail.png
+        // 例如: http://192.168.3.39:23359/projects/123/thumbnail.png
         const url = new URL(project.thumbnail_url);
         baseURL = `${url.protocol}//${url.host}`;
       }
 
-      // 构建项目根路径，后端会自动重定向到最新版本
-      const projectURL = `${baseURL}/projects/${project.name}/`;
+      // 构建项目URL，直接访问固定路径（始终是最新版本）
+      const projectURL = `${baseURL}/projects/${project.name}/index.html`;
       window.open(projectURL, "_blank");
     };
 
@@ -430,9 +430,11 @@ export default defineComponent({
                       <img
                         src={version.thumbnail_url}
                         alt="预览"
-                        onClick={() =>
-                          window.open(version.preview_url, "_blank")
-                        }
+                        onClick={() => {
+                          if (version.preview_url) {
+                            window.open(version.preview_url, "_blank");
+                          }
+                        }}
                       />
                     </div>
                   )}
