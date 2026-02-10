@@ -5,6 +5,7 @@ import (
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/response"
 	"go_wails_project_manager/services/document"
+	"go_wails_project_manager/services/fileprocessor"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,23 +16,35 @@ import (
 
 // DocumentController 文档控制器
 type DocumentController struct {
-	uploadService *document.UploadService
-	queryService  *document.QueryService
-	config        *config.DocumentConfig
+	uploadService        *document.UploadService
+	queryService         *document.QueryService
+	config               *config.DocumentConfig
+	fileProcessorService *fileprocessor.FileProcessorService
 }
 
 // NewDocumentController 创建文档控制器
-func NewDocumentController(db *gorm.DB) *DocumentController {
+func NewDocumentController(db *gorm.DB, fpService *fileprocessor.FileProcessorService, fpConfig *fileprocessor.Config) *DocumentController {
 	docConfig, err := config.LoadDocumentConfig()
 	if err != nil {
 		// 使用默认配置
 		docConfig = &config.DocumentConfig{}
 	}
 
+	uploadService := document.NewUploadService(db, docConfig)
+	
+	// 设置文件处理器服务和配置
+	if fpService != nil {
+		uploadService.SetFileProcessorService(fpService)
+	}
+	if fpConfig != nil {
+		uploadService.SetFileProcessorConfig(fpConfig)
+	}
+
 	return &DocumentController{
-		uploadService: document.NewUploadService(db, docConfig),
-		queryService:  document.NewQueryService(db),
-		config:        docConfig,
+		uploadService:        uploadService,
+		queryService:         document.NewQueryService(db),
+		config:               docConfig,
+		fileProcessorService: fpService,
 	}
 }
 
@@ -497,8 +510,8 @@ func (c *DocumentController) GetVersions(ctx *gin.Context) {
 }
 
 // RegisterDocumentRoutes 注册文档路由
-func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB) {
-	controller := NewDocumentController(db)
+func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB, fpService *fileprocessor.FileProcessorService, fpConfig *fileprocessor.Config) {
+	controller := NewDocumentController(db, fpService, fpConfig)
 
 	api := router.Group("/api/documents")
 	{

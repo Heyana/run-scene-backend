@@ -14,6 +14,8 @@ import (
 	"go_wails_project_manager/middleware"
 	"go_wails_project_manager/response"
 	ai3dService "go_wails_project_manager/services/ai3d"
+	"go_wails_project_manager/services/fileprocessor"
+	"go_wails_project_manager/services/task"
 
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
@@ -36,14 +38,26 @@ func Ping(c *gin.Context) {
 }
 
 // RegisterRoutes 注册API路由
-func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService interface{}) {
+func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService interface{}, fileProcessorService interface{}, fileProcessorConfig interface{}, taskService interface{}) {
 	// 初始化有用的控制器
 	backupController := controllers.NewBackupController()
 	securityController := controllers.NewSecurityController()
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
-	documentController := controllers.NewDocumentController(database.MustGetDB())
+	
+	// 创建文档控制器（传递文件处理器服务和配置）
+	var documentController *controllers.DocumentController
+	if fileProcessorService != nil && fileProcessorConfig != nil {
+		documentController = controllers.NewDocumentController(
+			database.MustGetDB(), 
+			fileProcessorService.(*fileprocessor.FileProcessorService),
+			fileProcessorConfig.(*fileprocessor.Config),
+		)
+	} else {
+		documentController = controllers.NewDocumentController(database.MustGetDB(), nil, nil)
+	}
+	
 	imageController := controllers.NewImageController()
 	blueprintController := controllers.NewBlueprintController(database.MustGetDB())
 	projectController := controllers.NewProjectController(database.MustGetDB())
@@ -55,6 +69,16 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 		if service, ok := ai3dTaskService.(*ai3dService.TaskService); ok {
 			ai3dUnifiedController = controllers.NewAI3DUnifiedController(service)
 		}
+	}
+
+	// 创建文件处理器控制器（如果服务已初始化）
+	var fileProcessorController *controllers.FileProcessorController
+	if fileProcessorService != nil && taskService != nil {
+		fileProcessorController = controllers.NewFileProcessorController(
+			fileProcessorService.(*fileprocessor.FileProcessorService),
+			taskService.(*task.TaskService),
+			log,
+		)
 	}
 
 	// 设置API文档（仅开发环境）
@@ -585,6 +609,21 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			statistics.GET("/overview", statisticsController.GetOverview)                   // 获取统计概览
 			statistics.GET("/recent-activities", statisticsController.GetRecentActivities) // 获取最近活动
 			statistics.GET("/system-status", statisticsController.GetSystemStatus)         // 获取系统状态
+		}
+
+		// 文件处理器API
+		if fileProcessorController != nil {
+			fileprocessor := api.Group("/fileprocessor")
+			{
+				fileprocessor.GET("/formats", fileProcessorController.GetSupportedFormats)      // 获取支持的格式
+				fileprocessor.POST("/metadata", fileProcessorController.ExtractMetadata)        // 提取元数据
+				fileprocessor.POST("/thumbnail", fileProcessorController.GenerateThumbnail)     // 生成缩略图
+				fileprocessor.POST("/tasks", fileProcessorController.CreateTask)                // 创建任务
+				fileprocessor.GET("/tasks", fileProcessorController.ListTasks)                  // 列出任务
+				fileprocessor.GET("/tasks/:id", fileProcessorController.GetTask)                // 获取任务详情
+				fileprocessor.POST("/tasks/:id/cancel", fileProcessorController.CancelTask)     // 取消任务
+				fileprocessor.POST("/tasks/:id/retry", fileProcessorController.RetryTask)       // 重试任务
+			}
 		}
 
 		// TODO: 添加其他业务控制器和路由

@@ -1,0 +1,42 @@
+# 文件处理器配置
+fileprocessor:
+  # FFmpeg配置
+  ffmpeg:
+    bin_path: "ffmpeg" # FFmpeg可执行文件路径（如果安装了FFmpeg，保持不变；否则留空）
+    timeout: 300 # 超时时间（秒）
+
+  # ImageMagick配置
+  imagemagick:
+    bin_path: "./static/libs/imageMagick/magick.exe" # ImageMagick可执行文件路径
+    timeout: 60 # 超时时间（秒）
+
+  # PDF工具配置
+  pdf:
+    bin_path: "pdftoppm" # PDF工具可执行文件路径（如果安装了poppler-utils，保持不变；否则留空）
+    timeout: 120 # 超时时间（秒）
+
+  # Blender配置
+  blender:
+    bin_path: "blender" # Blender可执行文件路径
+    script_path: "deploy/scripts/render_fbx.py" # 渲染脚本路径
+    timeout: 300 # 超时时间（秒）
+
+  # 预览图配置
+  thumbnail:
+    format: "webp" # 预览图格式：webp, jpg, png
+    width: 1280 # 预览图宽度（720p = 1280x720, 1080p = 1920x1080）
+    height: 720 # 预览图高度
+    quality: 85 # 预览图质量（0-100）
+
+  # 任务配置
+  task:
+    max_concurrent: 5 # 最大并发任务数
+    max_retries: 3 # 最大重试次数
+    retry_delay: 60 # 重试延迟（秒）
+    cleanup_after: 86400 # 清理时间（秒，24小时）
+
+  # 资源限制
+  resource:
+    max_memory_per_task: 2147483648 # 单个任务最大内存（2GB）
+    max_cpu_percent: 80.0 # 最大CPU使用率
+    max_temp_size: 10737418240 # 最大临时文件大小（10GB）

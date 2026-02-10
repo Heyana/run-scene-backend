@@ -101,6 +101,8 @@ fileprocessor:
     timeout: 60
 ```
 
+需要对应的 configs/fileprocessor.go
+
 ### 3. 初始化服务
 
 ```go

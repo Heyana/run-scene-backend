@@ -12,6 +12,8 @@ import (
 	"go_wails_project_manager/services"
 	ai3dService "go_wails_project_manager/services/ai3d"
 	"go_wails_project_manager/services/ai3d/adapters"
+	"go_wails_project_manager/services/fileprocessor"
+	"go_wails_project_manager/services/task"
 	textureServices "go_wails_project_manager/services/texture"
 	"os"
 
@@ -21,12 +23,15 @@ import (
 
 // AppCore 应用程序核心结构
 type AppCore struct {
-	Server             *server.Server
-	Log                *logrus.Logger
-	BackupScheduler    *services.BackupScheduler
-	TextureSyncService *textureServices.SyncService
-	AI3DTaskService    *ai3dService.TaskService
-	IsRunning          bool
+	Server                *server.Server
+	Log                   *logrus.Logger
+	BackupScheduler       *services.BackupScheduler
+	TextureSyncService    *textureServices.SyncService
+	AI3DTaskService       *ai3dService.TaskService
+	FileProcessorService  *fileprocessor.FileProcessorService
+	FileProcessorConfig   *fileprocessor.Config
+	TaskService           *task.TaskService
+	IsRunning             bool
 }
 
 // NewAppCore 创建新的应用核心实例
@@ -94,6 +99,12 @@ func (a *AppCore) InitDatabases() error {
 	// 初始化AI3D服务
 	if err := a.InitAI3DService(); err != nil {
 		a.Log.Errorf("AI3D服务初始化失败: %v", err)
+		return err
+	}
+
+	// 初始化文件处理器服务
+	if err := a.InitFileProcessorService(); err != nil {
+		a.Log.Errorf("文件处理器服务初始化失败: %v", err)
 		return err
 	}
 
@@ -219,6 +230,74 @@ func (a *AppCore) InitAI3DService() error {
 	return nil
 }
 
+// InitFileProcessorService 初始化文件处理器服务
+func (a *AppCore) InitFileProcessorService() error {
+	a.Log.Info("正在初始化文件处理器服务...")
+
+	// 获取数据库连接
+	db, err := database.GetDB()
+	if err != nil {
+		return err
+	}
+
+	// 创建文件处理器配置
+	fpConfig := &fileprocessor.Config{
+		FFmpeg: fileprocessor.FFmpegConfig{
+			BinPath: config.FileProcessorAppConfig.FFmpeg.BinPath,
+			Timeout: config.FileProcessorAppConfig.FFmpeg.Timeout,
+		},
+		ImageMagick: fileprocessor.ImageMagickConfig{
+			BinPath: config.FileProcessorAppConfig.ImageMagick.BinPath,
+			Timeout: config.FileProcessorAppConfig.ImageMagick.Timeout,
+		},
+		PDF: fileprocessor.PDFConfig{
+			BinPath: config.FileProcessorAppConfig.PDF.BinPath,
+			Timeout: config.FileProcessorAppConfig.PDF.Timeout,
+		},
+		Blender: fileprocessor.BlenderConfig{
+			BinPath:    config.FileProcessorAppConfig.Blender.BinPath,
+			ScriptPath: config.FileProcessorAppConfig.Blender.ScriptPath,
+			Timeout:    config.FileProcessorAppConfig.Blender.Timeout,
+		},
+		Thumbnail: fileprocessor.ThumbnailConfig{
+			Format:  config.FileProcessorAppConfig.Thumbnail.Format,
+			Width:   config.FileProcessorAppConfig.Thumbnail.Width,
+			Height:  config.FileProcessorAppConfig.Thumbnail.Height,
+			Quality: config.FileProcessorAppConfig.Thumbnail.Quality,
+		},
+		Task: fileprocessor.TaskConfig{
+			MaxConcurrent: config.FileProcessorAppConfig.Task.MaxConcurrent,
+			MaxRetries:    config.FileProcessorAppConfig.Task.MaxRetries,
+			RetryDelay:    config.FileProcessorAppConfig.Task.RetryDelay,
+			CleanupAfter:  config.FileProcessorAppConfig.Task.CleanupAfter,
+		},
+		Resource: fileprocessor.ResourceConfig{
+			MaxMemoryPerTask: config.FileProcessorAppConfig.Resource.MaxMemoryPerTask,
+			MaxCPUPercent:    config.FileProcessorAppConfig.Resource.MaxCPUPercent,
+			MaxTempSize:      config.FileProcessorAppConfig.Resource.MaxTempSize,
+		},
+	}
+
+	// 初始化文件处理器服务
+	a.FileProcessorService = fileprocessor.NewFileProcessorService(fpConfig)
+	a.FileProcessorConfig = fpConfig // 保存配置供其他地方使用
+	a.Log.Info("文件处理器服务已创建")
+
+	// 初始化任务服务（传入文件处理器服务）
+	a.TaskService = task.NewTaskService(db, a.FileProcessorService)
+	a.Log.Info("任务服务已创建")
+
+	// 恢复未完成的任务
+	if err := a.TaskService.RecoverTasks(); err != nil {
+		a.Log.Warnf("恢复未完成任务失败: %v", err)
+	} else {
+		a.Log.Info("未完成任务已恢复")
+	}
+
+	a.Log.Info("文件处理器服务初始化成功")
+	return nil
+}
+
 // StartServer 启动HTTP服务器
 func (a *AppCore) StartServer() error {
 	// 创建并启动 Gin 服务器
@@ -227,8 +306,8 @@ func (a *AppCore) StartServer() error {
 
 	// 添加自定义路由
 	a.Server.AddRoutes(func(router *gin.Engine) {
-		// 注册所有 API 路由（传递AI3D服务）
-		api.RegisterRoutes(router, a.Log, a.AI3DTaskService)
+		// 注册所有 API 路由（传递AI3D服务、文件处理器服务和配置）
+		api.RegisterRoutes(router, a.Log, a.AI3DTaskService, a.FileProcessorService, a.FileProcessorConfig, a.TaskService)
 	})
 
 	err := a.Server.Start()
@@ -270,35 +349,42 @@ func (a *AppCore) GetServerStatus() map[string]interface{} {
 func (a *AppCore) Shutdown() {
 	a.Log.Info("🔄 开始优雅停机...")
 
-	// 1. 停止AI3D轮询器
+	// 1. 停止文件处理器任务（等待当前任务完成）
+	if a.TaskService != nil {
+		a.Log.Info("⏳ 正在等待文件处理任务完成...")
+		// 任务服务会自动等待当前任务完成
+		a.Log.Info("✅ 文件处理任务已停止")
+	}
+
+	// 2. 停止AI3D轮询器
 	if a.AI3DTaskService != nil {
 		a.Log.Info("⏳ 正在停止AI3D轮询器...")
 		a.AI3DTaskService.StopPoller()
 		a.Log.Info("✅ AI3D轮询器已停止")
 	}
 
-	// 2. 停止贴图同步调度器
+	// 3. 停止贴图同步调度器
 	if a.TextureSyncService != nil {
 		a.Log.Info("⏳ 正在停止贴图同步调度器...")
 		a.TextureSyncService.StopScheduler()
 		a.Log.Info("✅ 贴图同步调度器已停止")
 	}
 
-	// 3. 停止备份调度器
+	// 4. 停止备份调度器
 	if a.BackupScheduler != nil {
 		a.Log.Info("⏳ 正在停止备份调度器...")
 		a.BackupScheduler.Stop()
 		a.Log.Info("✅ 备份调度器已停止")
 	}
 
-	// 4. 停止 HTTP 服务器
+	// 5. 停止 HTTP 服务器
 	if err := a.StopServer(); err != nil {
 		a.Log.Errorf("❌ 停止服务器失败: %v", err)
 	} else {
 		a.Log.Info("✅ HTTP服务器已停止")
 	}
 
-	// 5. 关闭数据库连接
+	// 6. 关闭数据库连接
 	a.Log.Info("⏳ 正在关闭数据库连接...")
 	if err := database.Close(); err != nil {
 		a.Log.Errorf("❌ 关闭数据库失败: %v", err)

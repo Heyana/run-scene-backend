@@ -406,6 +406,9 @@ type HunyuanConfig struct {
 // AppConfig 全局配置实例
 var AppConfig *Config
 
+// FileProcessorAppConfig 文件处理器全局配置实例
+var FileProcessorAppConfig *FileProcessorConfig
+
 // LoadConfig 加载配置
 func LoadConfig() error {
 	// 优先级: 环境变量 > YAML配置文件 > 默认值
@@ -576,6 +579,28 @@ func LoadConfig() error {
 	if err := LoadAIConfig(); err != nil {
 		// AI配置加载失败不影响主程序启动
 		logrus.Warnf("加载AI配置失败: %v", err)
+	}
+
+	// 8. 加载文件处理器配置
+	if fpConfig, err := LoadFileProcessorConfig(); err != nil {
+		logrus.Warnf("加载文件处理器配置失败: %v，将使用默认配置", err)
+		FileProcessorAppConfig = &FileProcessorConfig{}
+		// 设置默认值
+		FileProcessorAppConfig.FFmpeg.BinPath = "ffmpeg"
+		FileProcessorAppConfig.FFmpeg.Timeout = 300
+		FileProcessorAppConfig.ImageMagick.BinPath = "convert"
+		FileProcessorAppConfig.ImageMagick.Timeout = 60
+		FileProcessorAppConfig.PDF.BinPath = "pdftoppm"
+		FileProcessorAppConfig.PDF.Timeout = 120
+		FileProcessorAppConfig.Task.MaxConcurrent = 5
+		FileProcessorAppConfig.Task.MaxRetries = 3
+		FileProcessorAppConfig.Task.RetryDelay = 60
+		FileProcessorAppConfig.Task.CleanupAfter = 86400
+		FileProcessorAppConfig.Resource.MaxMemoryPerTask = 2147483648
+		FileProcessorAppConfig.Resource.MaxCPUPercent = 80.0
+		FileProcessorAppConfig.Resource.MaxTempSize = 10737418240
+	} else {
+		FileProcessorAppConfig = fpConfig
 	}
 
 	return nil

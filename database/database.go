@@ -122,6 +122,8 @@ func RunMigrations() error {
 		&models.ProjectVersion{},
 		// 活动记录表
 		&models.Activity{},
+		// 文件处理器任务表
+		&models.Task{},
 		// 注意：不再迁移旧的 hunyuan_tasks 和 meshy_tasks 表
 		// 它们已被合并到 ai3d_tasks 表中
 		// &hunyuan.HunyuanTask{},

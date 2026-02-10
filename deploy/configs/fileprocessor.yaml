@@ -1,0 +1,41 @@
+fileprocessor:
+  # FFmpeg配置
+  ffmpeg:
+    bin_path: "ffmpeg" # 系统已安装
+    timeout: 300
+
+  # ImageMagick配置
+  imagemagick:
+    bin_path: "/vol1/1003/project/editor_v2/static/libs/imageMagick/magick" # 使用绝对路径
+    timeout: 60
+
+  # PDF工具配置
+  pdf:
+    bin_path: "pdftoppm" # 如果安装了 poppler-utils
+    timeout: 120
+
+  # Blender配置
+  blender:
+    bin_path: "blender" # Blender可执行文件路径
+    script_path: "scripts/render_fbx.py" # 渲染脚本路径（修正路径）
+    timeout: 300 # 超时时间（秒）
+
+  # 预览图配置
+  thumbnail:
+    format: "webp"
+    width: 1280
+    height: 720
+    quality: 85
+
+  # 任务配置
+  task:
+    max_concurrent: 5
+    max_retries: 3
+    retry_delay: 60
+    cleanup_after: 86400
+
+  # 资源限制
+  resource:
+    max_memory_per_task: 2147483648
+    max_cpu_percent: 80.0
+    max_temp_size: 10737418240

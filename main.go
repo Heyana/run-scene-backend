@@ -4,14 +4,10 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/core"
 	"go_wails_project_manager/logger"
-	"go_wails_project_manager/server"
-	"io/fs"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -19,44 +15,12 @@ import (
 )
 
 // 使用 ** 通配符确保递归嵌入所有子目录和文件
-//
-//go:embed static/**
-var StaticFiles embed.FS
-
-//go:embed website/**
-var WebsiteFiles embed.FS
-
-// GetStaticFS 返回嵌入的静态文件系统
-func GetStaticFS() fs.FS {
-	return StaticFiles
-}
-
-// GetWebsiteFS 返回嵌入的网站文件系统
-func GetWebsiteFS() fs.FS {
-	// 打印当前工作目录
-	cwd, err := os.Getwd()
-	if err == nil {
-		log.Println("当前工作目录:", cwd)
-	}
-
-	// 打印可执行文件路径
-	execPath, err := os.Executable()
-	if err == nil {
-		log.Println("可执行文件路径:", execPath)
-		log.Println("可执行文件目录:", filepath.Dir(execPath))
-	}
-
-	return WebsiteFiles
-}
 
 func main() {
 	// 解析命令行参数
 	port := flag.Int("port", 0, "服务器端口（覆盖配置文件）")
 	flag.Parse()
 
-	// 设置文件系统包装器
-	server.GetStaticFSWrapper = GetStaticFS
-	server.GetWebsiteFSWrapper = GetWebsiteFS
 
 	// 确保数据目录存在
 	dataDir := "./data"

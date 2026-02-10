@@ -7,10 +7,13 @@ import (
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/logger"
 	"go_wails_project_manager/models"
+	"go_wails_project_manager/services/fileprocessor"
+	"go_wails_project_manager/services/fileprocessor/processors"
 	"go_wails_project_manager/services/storage"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -20,9 +23,11 @@ import (
 
 // UploadService 上传服务
 type UploadService struct {
-	db             *gorm.DB
-	config         *config.DocumentConfig
-	storageService *storage.FileStorageService
+	db                   *gorm.DB
+	config               *config.DocumentConfig
+	storageService       *storage.FileStorageService
+	fileProcessorService fileprocessor.IFileProcessorService // 文件处理器服务接口
+	fpConfig             *fileprocessor.Config                // 文件处理器配置
 }
 
 // NewUploadService 创建上传服务
@@ -40,6 +45,16 @@ func NewUploadService(db *gorm.DB, cfg *config.DocumentConfig) *UploadService {
 		config:         cfg,
 		storageService: storage.NewFileStorageService(storageConfig, logger.Log),
 	}
+}
+
+// SetFileProcessorService 设置文件处理器服务
+func (s *UploadService) SetFileProcessorService(fpService fileprocessor.IFileProcessorService) {
+	s.fileProcessorService = fpService
+}
+
+// SetFileProcessorConfig 设置文件处理器配置
+func (s *UploadService) SetFileProcessorConfig(fpConfig *fileprocessor.Config) {
+	s.fpConfig = fpConfig
 }
 
 // UploadMetadata 上传元数据
@@ -160,13 +175,140 @@ func (s *UploadService) Upload(file *multipart.FileHeader, metadata UploadMetada
 		return nil, err
 	}
 
-	// 12. 更新统计信息
+	// 12. 生成预览图（如果支持）
+	if s.fileProcessorService != nil {
+		go s.generatePreview(document)
+	}
+
+	// 13. 更新统计信息
 	s.updateMetrics(document)
 
-	// 13. 记录访问日志
+	// 14. 记录访问日志
 	s.logAccess(document.ID, "upload", metadata.UploadedBy, metadata.UploadIP)
 
 	return document, nil
+}
+
+// generatePreview 生成预览图（异步）
+func (s *UploadService) generatePreview(document *models.Document) {
+	logger.Log.Infof("开始生成预览图: documentID=%d, format=%s, filePath=%s", 
+		document.ID, document.Format, document.FilePath)
+
+	// 检查文件处理器是否支持该格式
+	processor := s.fileProcessorService.GetProcessor(document.Format)
+	if processor == nil {
+		logger.Log.Infof("文件格式不支持预览: %s", document.Format)
+		return
+	}
+
+	logger.Log.Infof("找到处理器: %s, 支持格式: %s", processor.Name(), document.Format)
+
+	// 获取实际的物理路径
+	actualFilePath := s.getActualFilePath(document.FilePath)
+	logger.Log.Infof("实际文件路径: %s", actualFilePath)
+
+	// 获取文件所在目录
+	fileDir := filepath.Dir(document.FilePath)
+	
+	// 生成缩略图路径：文件同目录下的 thumbnails 子文件夹
+	thumbnailRelativeDir := filepath.Join(fileDir, "thumbnails")
+	
+	// 获取预览图格式
+	thumbnailFormat := "jpg"
+	if s.fpConfig != nil && s.fpConfig.Thumbnail.Format != "" {
+		thumbnailFormat = s.fpConfig.Thumbnail.Format
+	}
+	
+	// 预览图文件名：原文件名.webp
+	originalFileName := filepath.Base(document.FilePath)
+	originalFileExt := filepath.Ext(originalFileName)
+	originalFileNameWithoutExt := strings.TrimSuffix(originalFileName, originalFileExt)
+	thumbnailFileName := fmt.Sprintf("%s.%s", originalFileNameWithoutExt, thumbnailFormat)
+	
+	thumbnailRelativePath := filepath.Join(thumbnailRelativeDir, thumbnailFileName)
+	thumbnailActualPath := s.getActualFilePath(thumbnailRelativePath)
+
+	logger.Log.Infof("缩略图相对路径: %s", thumbnailRelativePath)
+	logger.Log.Infof("缩略图实际路径: %s", thumbnailActualPath)
+
+	// 确保缩略图目录存在
+	thumbnailActualDir := filepath.Dir(thumbnailActualPath)
+	if err := os.MkdirAll(thumbnailActualDir, 0755); err != nil {
+		logger.Log.Errorf("创建缩略图目录失败: documentID=%d, dir=%s, error=%v", 
+			document.ID, thumbnailActualDir, err)
+		return
+	}
+
+	logger.Log.Infof("缩略图目录已创建或已存在: %s", thumbnailActualDir)
+
+	// 获取预览图尺寸和质量
+	thumbnailWidth := 1280
+	thumbnailHeight := 720
+	thumbnailQuality := 85
+	if s.fpConfig != nil {
+		if s.fpConfig.Thumbnail.Width > 0 {
+			thumbnailWidth = s.fpConfig.Thumbnail.Width
+		}
+		if s.fpConfig.Thumbnail.Height > 0 {
+			thumbnailHeight = s.fpConfig.Thumbnail.Height
+		}
+		if s.fpConfig.Thumbnail.Quality > 0 {
+			thumbnailQuality = s.fpConfig.Thumbnail.Quality
+		}
+	}
+
+	// 生成缩略图
+	options := processors.ThumbnailOptions{
+		Size:       thumbnailWidth, // 使用宽度作为 size
+		Quality:    thumbnailQuality,
+		OutputPath: thumbnailActualPath,
+	}
+
+	logger.Log.Infof("开始调用GenerateThumbnail: filePath=%s, format=%s, size=%dx%d, quality=%d, output=%s",
+		actualFilePath, document.Format, thumbnailWidth, thumbnailHeight, thumbnailQuality, thumbnailActualPath)
+
+	_, err := s.fileProcessorService.GenerateThumbnail(actualFilePath, document.Format, options)
+	if err != nil {
+		logger.Log.Errorf("生成预览图失败: documentID=%d, filePath=%s, actualPath=%s, format=%s, error=%v", 
+			document.ID, document.FilePath, actualFilePath, document.Format, err)
+		return
+	}
+
+	logger.Log.Infof("缩略图生成成功，准备更新数据库")
+
+	// 更新文档记录（保存相对路径）
+	if err := s.db.Model(document).Update("thumbnail_path", thumbnailRelativePath).Error; err != nil {
+		logger.Log.Errorf("更新预览图路径失败: documentID=%d, error=%v", document.ID, err)
+		return
+	}
+
+	logger.Log.Infof("预览图生成成功: documentID=%d, path=%s", document.ID, thumbnailRelativePath)
+}
+
+// getActualFilePath 获取文件的实际物理路径
+func (s *UploadService) getActualFilePath(relativePath string) string {
+	// 如果启用了 NAS，使用 NAS 路径
+	if s.config.NASEnabled && s.config.NASPath != "" {
+		// 标准化路径分隔符
+		cleanPath := strings.ReplaceAll(relativePath, "\\", "/")
+		storageDir := strings.ReplaceAll(s.config.StorageDir, "\\", "/")
+		
+		// 移除 storage_dir 前缀（如果存在）
+		if strings.HasPrefix(cleanPath, storageDir) {
+			cleanPath = strings.TrimPrefix(cleanPath, storageDir)
+		}
+		
+		// 移除开头的斜杠
+		cleanPath = strings.TrimPrefix(cleanPath, "/")
+		cleanPath = strings.TrimPrefix(cleanPath, "\\")
+		
+		// 拼接 NAS 路径
+		actualPath := filepath.Join(s.config.NASPath, cleanPath)
+		return actualPath
+	}
+	
+	// 否则使用本地路径
+	return relativePath
 }
 
 // saveFile 保存文件到存储（流式处理，避免大文件占用内存）
