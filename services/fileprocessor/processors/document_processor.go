@@ -2,20 +2,28 @@
 package processors
 
 import (
+	"context"
 	"fmt"
 	"go_wails_project_manager/utils/document"
+	"go_wails_project_manager/utils/image"
+	"os"
 	"path/filepath"
+	"strings"
 )
 
 // DocumentProcessor 文档处理器
 type DocumentProcessor struct {
-	pdftool *document.PDFTool
+	pdftool     *document.PDFTool
+	libreoffice *document.LibreOffice
+	imagemagick *image.ImageMagick
 }
 
 // NewDocumentProcessor 创建文档处理器
-func NewDocumentProcessor(pdftool *document.PDFTool) *DocumentProcessor {
+func NewDocumentProcessor(pdftool *document.PDFTool, libreoffice *document.LibreOffice, imagemagick *image.ImageMagick) *DocumentProcessor {
 	return &DocumentProcessor{
-		pdftool: pdftool,
+		pdftool:     pdftool,
+		libreoffice: libreoffice,
+		imagemagick: imagemagick,
 	}
 }
 
@@ -111,23 +119,72 @@ func (p *DocumentProcessor) GeneratePreview(filePath string, options PreviewOpti
 
 // GenerateThumbnail 生成缩略图
 func (p *DocumentProcessor) GenerateThumbnail(filePath string, options ThumbnailOptions) (string, error) {
-	// 生成第一页作为缩略图
-	previewPaths, err := p.pdftool.GeneratePreview(
-		filePath,
-		options.OutputPath,
-		[]int{1},
-		150,
-	)
+	fmt.Printf("[DocumentProcessor] GenerateThumbnail 开始\n")
+	fmt.Printf("[DocumentProcessor] 输入文件: %s\n", filePath)
+	fmt.Printf("[DocumentProcessor] 输出文件: %s\n", options.OutputPath)
 
-	if err != nil {
-		return "", err
+	ext := strings.ToLower(filepath.Ext(filePath))
+	
+	// 如果是 Office 文档或 PDF，使用 LibreOffice
+	if p.libreoffice != nil && (ext == ".doc" || ext == ".docx" || ext == ".ppt" || ext == ".pptx" || 
+		ext == ".xls" || ext == ".xlsx" || ext == ".pdf") {
+		
+		// 步骤1: 使用 LibreOffice 转换为 PNG（临时文件）
+		tempDir := filepath.Dir(options.OutputPath)
+		tempPNG := strings.TrimSuffix(options.OutputPath, filepath.Ext(options.OutputPath)) + "_temp.png"
+		
+		ctx := context.Background()
+		pngPath, err := p.libreoffice.ConvertToPNG(ctx, filePath, tempDir)
+		if err != nil {
+			fmt.Printf("[DocumentProcessor] LibreOffice 转换失败: %v\n", err)
+			return "", err
+		}
+		
+		// LibreOffice 生成的文件名可能不同，重命名为临时文件
+		if pngPath != tempPNG {
+			if err := os.Rename(pngPath, tempPNG); err != nil {
+				fmt.Printf("[DocumentProcessor] 重命名临时文件失败: %v\n", err)
+				os.Remove(pngPath)
+				return "", err
+			}
+		}
+		
+		fmt.Printf("[DocumentProcessor] LibreOffice 转换成功: %s\n", tempPNG)
+		
+		// 步骤2: 使用 ImageMagick 转换为 WebP
+		if p.imagemagick != nil {
+			err = p.imagemagick.Convert(tempPNG, options.OutputPath, "webp", options.Quality)
+			if err != nil {
+				fmt.Printf("[DocumentProcessor] 转换为 WebP 失败: %v\n", err)
+				os.Remove(tempPNG)
+				return "", err
+			}
+			
+			fmt.Printf("[DocumentProcessor] 转换为 WebP 成功: %s\n", options.OutputPath)
+			
+			// 步骤3: 清理临时 PNG 文件
+			err = os.Remove(tempPNG)
+			if err != nil {
+				fmt.Printf("[DocumentProcessor] 警告: 清理临时文件失败: %v\n", err)
+			}
+			
+			return options.OutputPath, nil
+		}
+		
+		// 如果没有 ImageMagick，直接返回 PNG
+		if err := os.Rename(tempPNG, options.OutputPath); err != nil {
+			os.Remove(tempPNG)
+			return "", err
+		}
+		return options.OutputPath, nil
 	}
-
-	if len(previewPaths) == 0 {
-		return "", fmt.Errorf("生成缩略图失败")
+	
+	// 纯文本文件不支持预览
+	if ext == ".txt" || ext == ".md" {
+		return "", fmt.Errorf("文本文件不支持预览图生成")
 	}
-
-	return previewPaths[0], nil
+	
+	return "", fmt.Errorf("不支持的文档格式: %s", ext)
 }
 
 // Convert 格式转换

@@ -259,6 +259,10 @@ func (a *AppCore) InitFileProcessorService() error {
 			ScriptPath: config.FileProcessorAppConfig.Blender.ScriptPath,
 			Timeout:    config.FileProcessorAppConfig.Blender.Timeout,
 		},
+		LibreOffice: fileprocessor.LibreOfficeConfig{
+			BinPath: config.FileProcessorAppConfig.LibreOffice.BinPath,
+			Timeout: config.FileProcessorAppConfig.LibreOffice.Timeout,
+		},
 		Thumbnail: fileprocessor.ThumbnailConfig{
 			Format:  config.FileProcessorAppConfig.Thumbnail.Format,
 			Width:   config.FileProcessorAppConfig.Thumbnail.Width,

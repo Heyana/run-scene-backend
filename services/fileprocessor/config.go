@@ -7,6 +7,7 @@ type Config struct {
 	ImageMagick ImageMagickConfig
 	PDF         PDFConfig
 	Blender     BlenderConfig
+	LibreOffice LibreOfficeConfig
 	Thumbnail   ThumbnailConfig
 	Task        TaskConfig
 	Resource    ResourceConfig
@@ -35,6 +36,12 @@ type BlenderConfig struct {
 	BinPath    string // 可执行文件路径
 	ScriptPath string // 渲染脚本路径
 	Timeout    int    // 超时时间（秒）
+}
+
+// LibreOfficeConfig LibreOffice配置
+type LibreOfficeConfig struct {
+	BinPath string // 可执行文件路径
+	Timeout int    // 超时时间（秒）
 }
 
 // ThumbnailConfig 预览图配置
@@ -79,6 +86,10 @@ func DefaultConfig() *Config {
 			BinPath:    "blender",
 			ScriptPath: "deploy/scripts/render_fbx.py",
 			Timeout:    300,
+		},
+		LibreOffice: LibreOfficeConfig{
+			BinPath: "libreoffice",
+			Timeout: 120,
 		},
 		Thumbnail: ThumbnailConfig{
 			Format:  "webp",

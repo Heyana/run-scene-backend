@@ -27,10 +27,18 @@ func NewFileProcessorService(config *Config) *FileProcessorService {
 	imagemagick := image.NewImageMagick(config.ImageMagick.BinPath, config.ImageMagick.Timeout)
 	pdftool := document.NewPDFTool(config.PDF.BinPath, config.PDF.Timeout)
 
+	// 初始化 LibreOffice（如果配置了）
+	var libreoffice *document.LibreOffice
+	if config.LibreOffice.BinPath != "" {
+		libreofficeTimeout := time.Duration(config.LibreOffice.Timeout) * time.Second
+		libreoffice = document.NewLibreOffice(config.LibreOffice.BinPath, libreofficeTimeout)
+		fmt.Printf("[FileProcessor] LibreOffice 已配置: %s\n", config.LibreOffice.BinPath)
+	}
+
 	// 注册处理器
 	service.RegisterProcessor(processors.NewVideoProcessor(ffmpeg))
 	service.RegisterProcessor(processors.NewImageProcessor(imagemagick))
-	service.RegisterProcessor(processors.NewDocumentProcessor(pdftool))
+	service.RegisterProcessor(processors.NewDocumentProcessor(pdftool, libreoffice, imagemagick))
 
 	// 如果配置了 Blender，注册 3D 模型处理器
 	if config.Blender.BinPath != "" {

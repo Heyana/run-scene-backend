@@ -20,6 +20,11 @@ fileprocessor:
     script_path: "scripts/render_fbx.py" # 渲染脚本路径（修正路径）
     timeout: 300 # 超时时间（秒）
 
+    # configs/fileprocessor.yaml
+  libreoffice:
+    bin_path: "libreoffice"
+    timeout: 120
+
   # 预览图配置
   thumbnail:
     format: "webp"

@@ -30,6 +30,11 @@ type FileProcessorConfig struct {
 		Timeout    int    `yaml:"timeout"`
 	} `yaml:"blender"`
 
+	LibreOffice struct {
+		BinPath string `yaml:"bin_path"`
+		Timeout int    `yaml:"timeout"`
+	} `yaml:"libreoffice"`
+
 	Thumbnail struct {
 		Format  string `yaml:"format"`
 		Width   int    `yaml:"width"`
@@ -64,6 +69,8 @@ func LoadFileProcessorConfig() (*FileProcessorConfig, error) {
 	config.Blender.BinPath = "blender"
 	config.Blender.ScriptPath = "deploy/scripts/render_fbx.py"
 	config.Blender.Timeout = 300
+	config.LibreOffice.BinPath = "libreoffice"
+	config.LibreOffice.Timeout = 120
 	config.Thumbnail.Format = "webp"
 	config.Thumbnail.Width = 1280
 	config.Thumbnail.Height = 720
