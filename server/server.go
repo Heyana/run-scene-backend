@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/logger"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"

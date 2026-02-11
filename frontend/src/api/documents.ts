@@ -32,6 +32,7 @@ export interface Document {
   file_url: string;
   thumbnail_url: string;
   preview_url: string;
+  folder_thumbnails?: string[]; // 文件夹缩略图（前4个文件）
 }
 
 export interface DocumentListParams {

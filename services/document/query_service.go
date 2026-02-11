@@ -113,8 +113,63 @@ func (q *QueryService) List(page, pageSize int, filters QueryFilters) ([]*models
 	var documents []*models.Document
 	offset := (page - 1) * pageSize
 	err := query.Offset(offset).Limit(pageSize).Find(&documents).Error
+	
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 为文件夹查询前4个文件的缩略图（性能优化：批量查询）
+	q.loadFolderThumbnails(documents)
 
 	return documents, total, err
+}
+
+// loadFolderThumbnails 批量加载文件夹缩略图（性能优化）
+func (q *QueryService) loadFolderThumbnails(documents []*models.Document) {
+	// 收集所有文件夹ID
+	folderIDs := make([]uint, 0)
+	for _, doc := range documents {
+		if doc.IsFolder {
+			folderIDs = append(folderIDs, doc.ID)
+		}
+	}
+	
+	if len(folderIDs) == 0 {
+		return
+	}
+	
+	// 批量查询所有文件夹的前4个缩略图（一次查询，性能优化）
+	type FolderThumbnail struct {
+		ParentID      uint
+		ThumbnailPath string
+	}
+	
+	var thumbnails []FolderThumbnail
+	q.db.Model(&models.Document{}).
+		Select("parent_id, thumbnail_path").
+		Where("parent_id IN ? AND is_folder = ? AND thumbnail_path IS NOT NULL AND thumbnail_path != ''", folderIDs, false).
+		Order("created_at DESC").
+		Limit(len(folderIDs) * 4). // 每个文件夹最多4个
+		Find(&thumbnails)
+	
+	// 按文件夹ID分组，并转换为完整URL
+	thumbnailMap := make(map[uint][]string)
+	for _, thumb := range thumbnails {
+		if len(thumbnailMap[thumb.ParentID]) < 4 {
+			// 调用 buildDocumentURL 转换为完整 URL
+			fullURL := models.BuildDocumentURL(thumb.ThumbnailPath)
+			thumbnailMap[thumb.ParentID] = append(thumbnailMap[thumb.ParentID], fullURL)
+		}
+	}
+	
+	// 将缩略图赋值给文件夹（使用 FolderThumbnails 字段）
+	for _, doc := range documents {
+		if doc.IsFolder {
+			if thumbs, ok := thumbnailMap[doc.ID]; ok {
+				doc.FolderThumbnails = thumbs
+			}
+		}
+	}
 }
 
 // GetDetail 获取详情

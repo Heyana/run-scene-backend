@@ -55,16 +55,16 @@ type Document struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// 虚拟字段，不存储到数据库
-	FileURL      string `gorm:"-" json:"file_url,omitempty"`
-	ThumbnailURL string `gorm:"-" json:"thumbnail_url,omitempty"`
-	PreviewURL   string `gorm:"-" json:"preview_url,omitempty"`
+	FileURL           string   `gorm:"-" json:"file_url,omitempty"`
+	ThumbnailURL      string   `gorm:"-" json:"thumbnail_url,omitempty"`
+	PreviewURL        string   `gorm:"-" json:"preview_url,omitempty"`
+	FolderThumbnails  []string `gorm:"-" json:"folder_thumbnails,omitempty"` // 文件夹缩略图（前4个文件）
 }
 
 // AfterFind GORM 钩子：查询后自动拼接完整 URL
 func (d *Document) AfterFind(tx *gorm.DB) error {
-	// 只有文件才拼接 URL
+	// 文件：拼接文件 URL
 	if !d.IsFolder {
-		// 拼接文件 URL
 		if d.FilePath != "" {
 			d.FileURL = buildDocumentURL(d.FilePath)
 		}
@@ -79,6 +79,7 @@ func (d *Document) AfterFind(tx *gorm.DB) error {
 			d.PreviewURL = buildDocumentURL(d.PreviewPath)
 		}
 	}
+	// 注意：FolderThumbnails 已在 loadFolderThumbnails 中处理，无需在此处理
 
 	return nil
 }
@@ -108,8 +109,8 @@ func updateParentChildCount(tx *gorm.DB, parentID uint) error {
 	return tx.Model(&Document{}).Where("id = ?", parentID).Update("child_count", count).Error
 }
 
-// buildDocumentURL 构建文档文件的完整 URL
-func buildDocumentURL(path string) string {
+// BuildDocumentURL 构建文档文件的完整 URL（导出供其他包使用）
+func BuildDocumentURL(path string) string {
 	// 如果已经是完整 URL（以 http 开头），直接使用
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
@@ -135,6 +136,11 @@ func buildDocumentURL(path string) string {
 	filePath = strings.TrimPrefix(filePath, "static/documents/")
 	filePath = strings.TrimPrefix(filePath, "documents/")
 	return "/documents/" + filePath
+}
+
+// buildDocumentURL 内部使用的别名（保持向后兼容）
+func buildDocumentURL(path string) string {
+	return BuildDocumentURL(path)
 }
 
 // DocumentMetadata 文档元数据表

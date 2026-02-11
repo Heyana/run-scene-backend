@@ -32,6 +32,7 @@ export default defineComponent({
       models: { total: 0, trend: 0, recent_count: 0 },
       assets: { total: 0, trend: 0, recent_count: 0 },
       ai3d: { total: 0, trend: 0, recent_count: 0 },
+      documents: { total: 0, trend: 0, recent_count: 0 },
     });
 
     // 最近活动
@@ -159,7 +160,7 @@ export default defineComponent({
           description: "公司文档资料管理",
           path: "/documents",
           color: "#13c2c2",
-          count: 0,
+          count: stats.value.documents.total,
         },
         {
           title: "AI 3D",

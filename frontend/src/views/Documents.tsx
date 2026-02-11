@@ -802,16 +802,50 @@ export default defineComponent({
           onCardClick={handleCardClick}
           renderPreview={(item: Document) => {
             if (item.is_folder) {
-              return (
-                <div class="preview-placeholder">
-                  <FolderOutlined
-                    style={{ fontSize: "48px", color: "#1890ff" }}
-                  />
-                  <div style={{ marginTop: "8px", fontSize: "12px" }}>
-                    {item.child_count || 0} 个子项
+              // 文件夹：显示前4个文件的缩略图网格，或默认图标
+              if (item.folder_thumbnails && item.folder_thumbnails.length > 0) {
+                const thumbs = item.folder_thumbnails.slice(0, 4);
+                return (
+                  <div class="folder-thumbnail-grid">
+                    {thumbs.map((thumb, index) => (
+                      <div key={index} class="folder-thumbnail-item">
+                        <Image
+                          src={thumb}
+                          width="100%"
+                          height="100%"
+                          style={{ objectFit: "cover" }}
+                          preview={false}
+                        />
+                      </div>
+                    ))}
+                    {/* 填充空白格子 */}
+                    {Array.from({ length: 4 - thumbs.length }).map(
+                      (_, index) => (
+                        <div
+                          key={`empty-${index}`}
+                          class="folder-thumbnail-item folder-thumbnail-empty"
+                        >
+                          <FileOutlined
+                            style={{ fontSize: "20px", color: "#d9d9d9" }}
+                          />
+                        </div>
+                      ),
+                    )}
                   </div>
-                </div>
-              );
+                );
+              } else {
+                // 空文件夹或无缩略图：显示默认图标
+                return (
+                  <div class="preview-placeholder">
+                    <FolderOutlined
+                      style={{ fontSize: "48px", color: "#1890ff" }}
+                    />
+                    <div style={{ marginTop: "8px", fontSize: "12px" }}>
+                      {item.child_count || 0} 个子项
+                    </div>
+                  </div>
+                );
+              }
             } else {
               const videoFormats = ["mp4", "webm", "avi", "mov"];
 

@@ -27,11 +27,12 @@ type ResourceStats struct {
 
 // OverviewStats 统计概览
 type OverviewStats struct {
-	Textures ResourceStats `json:"textures"`
-	Projects ResourceStats `json:"projects"`
-	Models   ResourceStats `json:"models"`
-	Assets   ResourceStats `json:"assets"`
-	AI3D     ResourceStats `json:"ai3d"`
+	Textures  ResourceStats `json:"textures"`
+	Projects  ResourceStats `json:"projects"`
+	Models    ResourceStats `json:"models"`
+	Assets    ResourceStats `json:"assets"`
+	AI3D      ResourceStats `json:"ai3d"`
+	Documents ResourceStats `json:"documents"` // 文件库统计
 }
 
 // StorageInfo 存储信息
@@ -98,6 +99,14 @@ func (ss *StatisticsService) GetOverview() (*OverviewStats, error) {
 	}
 	stats.AI3D = ai3dStats
 
+	// 文件库统计
+	documentStats, err := ss.getResourceStats("document")
+	if err != nil {
+		// 文件库统计失败不影响整体，使用空值
+		documentStats = ResourceStats{}
+	}
+	stats.Documents = documentStats
+
 	return stats, nil
 }
 
@@ -150,6 +159,9 @@ func (ss *StatisticsService) GetResourceCount(resourceType string) (int64, error
 			gorm.Model
 		}
 		err = ss.db.Model(&task).Table("ai3d_tasks").Count(&count).Error
+	case "document":
+		// 文件库统计 - 只统计文件，不包括文件夹
+		err = ss.db.Model(&models.Document{}).Where("is_folder = ?", false).Count(&count).Error
 	default:
 		return 0, fmt.Errorf("未知的资源类型: %s", resourceType)
 	}
@@ -210,6 +222,8 @@ func (ss *StatisticsService) getCountSince(resourceType string, since time.Time)
 			gorm.Model
 		}
 		err = ss.db.Model(&task).Table("ai3d_tasks").Where("created_at >= ?", since).Count(&count).Error
+	case "document":
+		err = ss.db.Model(&models.Document{}).Where("is_folder = ? AND created_at >= ?", false, since).Count(&count).Error
 	}
 
 	return count, err
@@ -234,6 +248,8 @@ func (ss *StatisticsService) getCountBetween(resourceType string, start, end tim
 			gorm.Model
 		}
 		err = ss.db.Model(&task).Table("ai3d_tasks").Where("created_at >= ? AND created_at < ?", start, end).Count(&count).Error
+	case "document":
+		err = ss.db.Model(&models.Document{}).Where("is_folder = ? AND created_at >= ? AND created_at < ?", false, start, end).Count(&count).Error
 	}
 
 	return count, err
