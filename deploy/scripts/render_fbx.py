@@ -3,14 +3,13 @@
 3D 模型预览图渲染脚本
 使用 Blender 命令行渲染 3D 模型的预览图
 
-支持格式: FBX, OBJ
-注意: GLB/GLTF 需要 numpy，Blender 3.4.1 存在兼容性问题，暂不支持
+支持格式: FBX, OBJ, GLB, GLTF
 
 使用方法:
     blender -b -P render_fbx.py -- input.fbx output.png [width] [height] [quality]
 
 参数:
-    input       - 输入的 3D 模型文件路径 (.fbx, .obj)
+    input       - 输入的 3D 模型文件路径 (.fbx, .obj, .glb, .gltf)
     output      - 输出的预览图路径
     width       - 可选，图片宽度，默认 1280
     height      - 可选，图片高度，默认 720
@@ -33,7 +32,7 @@ def clear_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 def import_model(file_path):
-    """导入 3D 模型文件（支持 FBX, OBJ）"""
+    """导入 3D 模型文件（支持 FBX, OBJ, GLB, GLTF）"""
     # 获取文件扩展名
     ext = os.path.splitext(file_path)[1].lower()
     
@@ -44,10 +43,12 @@ def import_model(file_path):
         elif ext == '.obj':
             bpy.ops.import_scene.obj(filepath=file_path)
             print(f"✓ 成功导入 OBJ: {file_path}")
+        elif ext in ['.glb', '.gltf']:
+            bpy.ops.import_scene.gltf(filepath=file_path)
+            print(f"✓ 成功导入 GLTF: {file_path}")
         else:
             print(f"✗ 不支持的文件格式: {ext}")
-            print(f"支持的格式: .fbx, .obj")
-            print(f"注意: GLB/GLTF 需要 numpy，当前 Blender 版本存在兼容性问题")
+            print(f"支持的格式: .fbx, .obj, .glb, .gltf")
             return False
         return True
     except Exception as e:
@@ -279,10 +280,9 @@ def main():
     
     # 检查文件格式
     ext = os.path.splitext(input_file)[1].lower()
-    if ext not in ['.fbx', '.obj']:
+    if ext not in ['.fbx', '.obj', '.glb', '.gltf']:
         print(f"错误: 不支持的文件格式: {ext}")
-        print("支持的格式: .fbx, .obj")
-        print("注意: GLB/GLTF 需要 numpy，当前 Blender 版本存在兼容性问题")
+        print("支持的格式: .fbx, .obj, .glb, .gltf")
         sys.exit(1)
     
     # 确保输出目录存在

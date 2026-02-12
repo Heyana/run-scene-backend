@@ -1,5 +1,5 @@
 import { defineComponent, ref } from "vue";
-import { Image, Spin } from "ant-design-vue";
+import { Spin } from "ant-design-vue";
 import type { IPreviewAdapter, PreviewAdapterProps } from "../types";
 
 // 图片预览适配器
@@ -48,14 +48,21 @@ const ImagePreview = defineComponent({
     const error = ref(false);
 
     const handleLoad = () => {
+      console.log("图片加载成功");
       loading.value = false;
       props.onLoad?.();
     };
 
-    const handleError = (e: Event) => {
+    const handleError = () => {
+      console.log("图片加载失败");
       loading.value = false;
       error.value = true;
       props.onError?.(new Error("图片加载失败"));
+    };
+
+    const handleClick = () => {
+      // 点击图片在新窗口打开
+      window.open(props.file.file_url, "_blank");
     };
 
     return () => (
@@ -72,16 +79,23 @@ const ImagePreview = defineComponent({
             <div class="error-text">图片加载失败</div>
           </div>
         ) : (
-          <div style={{ display: loading.value ? "none" : "block" }}>
-            <Image
+          <div
+            class="image-wrapper"
+            style={{ display: loading.value ? "none" : "block" }}
+          >
+            <img
               src={props.file.file_url}
               alt={props.file.name}
-              style={{ maxWidth: "100%", maxHeight: "80vh" }}
-              preview={{
-                src: props.file.file_url,
+              style={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                cursor: "pointer",
+                display: "block",
+                margin: "0 auto",
               }}
               onLoad={handleLoad}
               onError={handleError}
+              onClick={handleClick}
             />
           </div>
         )}

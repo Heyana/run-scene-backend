@@ -17,13 +17,13 @@ fileprocessor:
 
   # Blender配置
   blender:
-    bin_path: "blender" # Blender可执行文件路径
+    bin_path: "C:/Program Files/Blender Foundation/Blender 3.3/blender.exe" # Blender可执行文件路径
     script_path: "deploy/scripts/render_fbx.py" # 渲染脚本路径
     timeout: 300 # 超时时间（秒）
 
   # LibreOffice配置
   libreoffice:
-    bin_path: "libreoffice" # LibreOffice可执行文件路径
+    bin_path: "C:/Program Files/LibreOffice/program/soffice.exe" # LibreOffice可执行文件路径
     timeout: 120 # 超时时间（秒）
 
   # 预览图配置

@@ -46,10 +46,18 @@ func (lo *LibreOffice) ConvertToPNG(ctx context.Context, inputPath, outputDir st
 
 	// LibreOffice 命令：转换为 PNG
 	// --headless: 无界面模式
+	// --invisible: 不显示窗口（Windows 上比 headless 更稳定）
+	// --nologo: 不显示启动画面
+	// --norestore: 不恢复上次会话
+	// --nofirststartwizard: 跳过首次启动向导
 	// --convert-to png: 转换为 PNG 格式
 	// --outdir: 输出目录
 	args := []string{
 		"--headless",
+		"--invisible",
+		"--nologo",
+		"--norestore",
+		"--nofirststartwizard",
 		"--convert-to", "png",
 		"--outdir", outputDir,
 		inputPath,
@@ -96,6 +104,10 @@ func (lo *LibreOffice) ConvertToPDF(ctx context.Context, inputPath, outputDir st
 	// LibreOffice 命令：转换为 PDF
 	args := []string{
 		"--headless",
+		"--invisible",
+		"--nologo",
+		"--norestore",
+		"--nofirststartwizard",
 		"--convert-to", "pdf",
 		"--outdir", outputDir,
 		inputPath,
