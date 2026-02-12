@@ -14,6 +14,7 @@ export interface ResourceGridProps<T = any> {
   renderPreview?: (item: T) => JSX.Element;
   renderContent?: (item: T) => JSX.Element;
   onCardClick?: (item: T) => void;
+  onContextMenu?: (e: MouseEvent, item: T) => void;
 }
 
 export default defineComponent({
@@ -51,6 +52,9 @@ export default defineComponent({
     },
     onCardClick: {
       type: Function as PropType<(item: any) => void>,
+    },
+    onContextMenu: {
+      type: Function as PropType<(e: MouseEvent, item: any) => void>,
     },
   },
   setup(props) {
@@ -99,6 +103,9 @@ export default defineComponent({
                     key={item.id}
                     class="resource-card"
                     onClick={() => props.onCardClick?.(item)}
+                    onContextmenu={(e: MouseEvent) =>
+                      props.onContextMenu?.(e, item)
+                    }
                   >
                     {/* 预览图 */}
                     <div class="resource-preview">

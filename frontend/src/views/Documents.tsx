@@ -37,6 +37,8 @@ import {
   createFolder,
 } from "@/api/documents";
 import type { Document } from "@/api/documents";
+import { showContextMenu } from "@/utils/context-menu";
+import type { MenuItem } from "@/utils/context-menu";
 import "./Documents.less";
 import { useRoute, useRouter } from "vue-router";
 
@@ -610,6 +612,88 @@ export default defineComponent({
       }
     };
 
+    // 右键菜单
+    const handleContextMenu = (e: MouseEvent, item: Document) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const menuItems: MenuItem[] = [
+        {
+          label: "预览",
+          key: "preview",
+          icon: "",
+          disabled: item.is_folder,
+          onClick: async () => {
+            // 模拟异步操作
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            handlePreview(item);
+          },
+        },
+        {
+          label: "刷新",
+          key: "refresh",
+          icon: "",
+          onClick: async () => {
+            await loadCurrentFolder();
+          },
+        },
+        {
+          label: "重新截图",
+          key: "screenshot",
+          icon: "",
+          disabled: item.is_folder,
+          onClick: async () => {
+            // 模拟异步截图操作
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            message.info("截图功能开发中...");
+          },
+        },
+        {
+          label: "更多操作",
+          key: "more",
+          icon: "",
+          children: [
+            {
+              label: "重命名",
+              key: "rename",
+              icon: "",
+              onClick: () => {
+                message.info("重命名功能开发中...");
+              },
+            },
+            {
+              label: "复制",
+              key: "copy",
+              icon: "",
+              onClick: () => {
+                message.info("复制功能开发中...");
+              },
+            },
+            {
+              label: "移动",
+              key: "move",
+              icon: "",
+              onClick: () => {
+                message.info("移动功能开发中...");
+              },
+            },
+          ],
+        },
+        {
+          label: "删除",
+          key: "delete",
+          icon: "",
+          type: "delete",
+          divided: true,
+          onClick: async () => {
+            await handleDelete(item);
+          },
+        },
+      ];
+
+      showContextMenu(e, menuItems);
+    };
+
     // 搜索
     const handleSearch = (value: string) => {
       keyword.value = value;
@@ -800,6 +884,7 @@ export default defineComponent({
           pageSize={pageSize.value}
           onPageChange={handlePageChange}
           onCardClick={handleCardClick}
+          onContextMenu={handleContextMenu}
           renderPreview={(item: Document) => {
             if (item.is_folder) {
               // 文件夹：显示前4个文件的缩略图网格，或默认图标
