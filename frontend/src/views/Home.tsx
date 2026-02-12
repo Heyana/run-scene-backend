@@ -20,7 +20,10 @@ import {
   type Activity,
 } from "@/api/statistics";
 import "./Home.less";
-
+import "run-scene-v2";
+import "@vue-office/pdf";
+import "@vue-office/excel";
+import "@vue-office/docx";
 export default defineComponent({
   name: "Home",
   setup() {
