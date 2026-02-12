@@ -553,6 +553,7 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 			documents.PUT("/:id", documentController.Update)                   // 更新文档信息
 			documents.DELETE("/:id", documentController.Delete)                // 删除文档（支持级联删除文件夹）
 			documents.GET("/:id/download", documentController.Download)        // 下载文档
+			documents.POST("/:id/refresh-thumbnail", documentController.RefreshThumbnail) // 刷新缩略图
 			documents.GET("/:id/versions", documentController.GetVersions)     // 获取版本列表
 			documents.GET("/:id/logs", documentController.GetAccessLogs)       // 获取访问日志
 		}

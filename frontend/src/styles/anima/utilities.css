@@ -1,0 +1,145 @@
+/* 动画工具类 */
+
+/* ==================== 淡入淡出 ==================== */
+.fade-in {
+  animation: fadeIn var(--fade-duration) var(--fade-easing) forwards;
+}
+
+.fade-out {
+  animation: fadeOut var(--fade-duration) var(--fade-easing) forwards;
+}
+
+/* ==================== 缩放 ==================== */
+.zoom-in {
+  animation: zoomIn var(--zoom-duration) var(--zoom-easing) forwards;
+}
+
+.zoom-out {
+  animation: zoomOut var(--zoom-duration) var(--zoom-easing) forwards;
+}
+
+.zoom-big-in {
+  animation: zoomBigIn var(--zoom-duration) var(--zoom-easing) forwards;
+}
+
+/* ==================== 滑动 ==================== */
+.slide-up-in {
+  animation: slideUpIn var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-up-out {
+  animation: slideUpOut var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-down-in {
+  animation: slideDownIn var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-down-out {
+  animation: slideDownOut var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-left-in {
+  animation: slideLeftIn var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-left-out {
+  animation: slideLeftOut var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-right-in {
+  animation: slideRightIn var(--slide-duration) var(--slide-easing) forwards;
+}
+
+.slide-right-out {
+  animation: slideRightOut var(--slide-duration) var(--slide-easing) forwards;
+}
+
+/* ==================== 弹出 ==================== */
+.popup-in {
+  animation: popupIn var(--popup-duration) var(--popup-easing) forwards;
+}
+
+.popup-out {
+  animation: popupOut var(--popup-duration) var(--popup-easing) forwards;
+}
+
+/* ==================== 旋转 ==================== */
+.rotate {
+  animation: rotate 1s var(--motion-ease-linear) infinite;
+}
+
+.rotate-in {
+  animation: rotateIn var(--motion-duration-base) var(--motion-ease-out)
+    forwards;
+}
+
+/* ==================== 其他效果 ==================== */
+.shake {
+  animation: shake 0.5s var(--motion-ease-in-out);
+}
+
+.pulse {
+  animation: pulse 1.5s var(--motion-ease-in-out) infinite;
+}
+
+.bounce {
+  animation: bounce 1s var(--motion-ease-in-out) infinite;
+}
+
+.breathe {
+  animation: breathe 2s var(--motion-ease-in-out) infinite;
+}
+
+.blink {
+  animation: blink 1s var(--motion-ease-linear) infinite;
+}
+
+/* ==================== 过渡工具类 ==================== */
+.transition-all {
+  transition: all var(--motion-duration-mid) var(--motion-ease-in-out);
+}
+
+.transition-fast {
+  transition: all var(--motion-duration-fast) var(--motion-ease-in-out);
+}
+
+.transition-slow {
+  transition: all var(--motion-duration-slow) var(--motion-ease-in-out);
+}
+
+.transition-transform {
+  transition: transform var(--motion-duration-mid) var(--motion-ease-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--motion-duration-mid) var(--motion-ease-in-out);
+}
+
+.transition-colors {
+  transition:
+    color var(--motion-duration-mid) var(--motion-ease-in-out),
+    background-color var(--motion-duration-mid) var(--motion-ease-in-out),
+    border-color var(--motion-duration-mid) var(--motion-ease-in-out);
+}
+
+/* ==================== 延迟工具类 ==================== */
+.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.delay-300 {
+  animation-delay: 0.3s;
+}
+
+.delay-400 {
+  animation-delay: 0.4s;
+}
+
+.delay-500 {
+  animation-delay: 0.5s;
+}

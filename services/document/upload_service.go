@@ -56,6 +56,34 @@ func (s *UploadService) SetFileProcessorService(fpService fileprocessor.IFilePro
 func (s *UploadService) SetFileProcessorConfig(fpConfig *fileprocessor.Config) {
 	s.fpConfig = fpConfig
 }
+// RegenerateThumbnail 重新生成文档缩略图（公开方法）
+func (s *UploadService) RegenerateThumbnail(documentID uint) error {
+	// 查询文档
+	var document models.Document
+	if err := s.db.First(&document, documentID).Error; err != nil {
+		return fmt.Errorf("文档不存在: %w", err)
+	}
+
+	// 检查是否是文件夹
+	if document.IsFolder {
+		return fmt.Errorf("文件夹不支持生成缩略图")
+	}
+
+	// 检查文件格式是否支持预览
+	if s.fileProcessorService == nil {
+		return fmt.Errorf("文件处理器服务未初始化")
+	}
+
+	processor := s.fileProcessorService.GetProcessor(document.Format)
+	if processor == nil {
+		return fmt.Errorf("文件格式 %s 不支持生成缩略图", document.Format)
+	}
+
+	// 异步生成缩略图
+	go s.generatePreview(&document)
+
+	return nil
+}
 
 // UploadMetadata 上传元数据
 type UploadMetadata struct {

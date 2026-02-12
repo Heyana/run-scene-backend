@@ -129,3 +129,8 @@ export const createFolder = (data: {
 }) => {
   return http.post("/documents/folder", data);
 };
+
+// 刷新文档缩略图
+export const refreshDocumentThumbnail = (id: number) => {
+  return http.post(`/documents/${id}/refresh-thumbnail`);
+};

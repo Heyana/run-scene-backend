@@ -8,6 +8,7 @@ import {
 } from "vue";
 import type { MenuItem, ContextMenuPosition } from "./types";
 import "./style.css";
+import "@/styles/anima/index.css";
 
 export default defineComponent({
   name: "ContextMenu",
@@ -126,7 +127,7 @@ export default defineComponent({
       <Teleport to="body">
         <div
           ref={menuRef}
-          class="context-menu"
+          class="context-menu zoom-in"
           style={{
             left: `${props.position.x}px`,
             top: `${props.position.y}px`,

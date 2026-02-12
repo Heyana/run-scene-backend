@@ -35,6 +35,7 @@ import {
   uploadFolder,
   deleteDocument,
   createFolder,
+  refreshDocumentThumbnail,
 } from "@/api/documents";
 import type { Document } from "@/api/documents";
 import { showContextMenu } from "@/utils/context-menu";
@@ -640,12 +641,14 @@ export default defineComponent({
         {
           label: "重新截图",
           key: "screenshot",
-          icon: "",
           disabled: item.is_folder,
           onClick: async () => {
-            // 模拟异步截图操作
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            message.info("截图功能开发中...");
+            try {
+              await refreshDocumentThumbnail(item.id);
+              message.success("缩略图刷新任务已启动，请稍后刷新页面查看");
+            } catch (error: any) {
+              message.error(error.response?.data?.msg || "刷新缩略图失败");
+            }
           },
         },
         {

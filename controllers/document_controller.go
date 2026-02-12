@@ -485,6 +485,30 @@ func (c *DocumentController) GetAccessLogs(ctx *gin.Context) {
 
 	response.SuccessWithPagination(ctx, logs, total, page, pageSize)
 }
+// RefreshThumbnail 刷新文档缩略图
+// @Summary 刷新文档缩略图
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文档ID"
+// @Success 200 {object} response.Response
+// @Router /api/documents/:id/refresh-thumbnail [post]
+func (c *DocumentController) RefreshThumbnail(ctx *gin.Context) {
+	// 获取文档ID
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文档ID")
+		return
+	}
+
+	// 调用 uploadService 的 RegenerateThumbnail 方法
+	if err := c.uploadService.RegenerateThumbnail(uint(id)); err != nil {
+		response.Error(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "缩略图刷新任务已启动", nil)
+}
 
 // GetVersions 获取版本列表
 // @Summary 获取版本列表
@@ -526,6 +550,7 @@ func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB, fpService *fileproc
 
 		// 文件操作
 		api.GET("/:id/download", controller.Download)
+		api.POST("/:id/refresh-thumbnail", controller.RefreshThumbnail) // 刷新缩略图
 
 		// 版本管理
 		api.GET("/:id/versions", controller.GetVersions)

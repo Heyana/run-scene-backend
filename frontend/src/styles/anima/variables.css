@@ -1,0 +1,50 @@
+/* 动画变量定义 - 参考 Ant Design 动画系统 */
+
+/* ==================== 动画时长 ==================== */
+:root {
+  /* 基础时长 */
+  --motion-duration-fast: 0.1s;
+  --motion-duration-mid: 0.2s;
+  --motion-duration-base: 0.3s;
+  --motion-duration-slow: 0.4s;
+
+  /* ==================== 缓动函数 ==================== */
+  /* 标准缓动 - 用于大多数场景 */
+  --motion-ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --motion-ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --motion-ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+
+  /* 线性 */
+  --motion-ease-linear: cubic-bezier(0, 0, 1, 1);
+
+  /* 快速缓动 - 用于快速交互 */
+  --motion-ease-in-out-circ: cubic-bezier(0.78, 0.14, 0.15, 0.86);
+  --motion-ease-out-circ: cubic-bezier(0.08, 0.82, 0.17, 1);
+  --motion-ease-in-circ: cubic-bezier(0.6, 0.04, 0.98, 0.34);
+
+  /* 回弹效果 - 用于强调 */
+  --motion-ease-out-back: cubic-bezier(0.12, 0.4, 0.29, 1.46);
+  --motion-ease-in-back: cubic-bezier(0.71, -0.46, 0.88, 0.6);
+  --motion-ease-in-out-back: cubic-bezier(0.71, -0.46, 0.29, 1.46);
+
+  /* 弹性效果 - 用于特殊场景 */
+  --motion-ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-ease-in-quint: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+
+  /* ==================== 组合动画配置 ==================== */
+  /* 淡入淡出 */
+  --fade-duration: var(--motion-duration-mid);
+  --fade-easing: var(--motion-ease-in-out);
+
+  /* 缩放 */
+  --zoom-duration: var(--motion-duration-mid);
+  --zoom-easing: var(--motion-ease-out-circ);
+
+  /* 滑动 */
+  --slide-duration: var(--motion-duration-base);
+  --slide-easing: var(--motion-ease-out);
+
+  /* 弹出 */
+  --popup-duration: var(--motion-duration-base);
+  --popup-easing: var(--motion-ease-out-back);
+}

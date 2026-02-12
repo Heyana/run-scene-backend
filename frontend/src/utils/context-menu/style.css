@@ -8,6 +8,7 @@
   min-width: 160px;
   z-index: 9999;
   user-select: none;
+  transform-origin: top left;
 }
 
 .context-menu-item {
@@ -17,14 +18,16 @@
   padding: 8px 16px;
   cursor: pointer;
   transition:
-    background-color 0.2s,
-    color 0.2s;
+    background-color var(--motion-duration-fast) var(--motion-ease-in-out),
+    color var(--motion-duration-fast) var(--motion-ease-in-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
   font-size: 14px;
   color: #333;
 }
 
 .context-menu-item:hover:not(.disabled):not(.loading) {
   background-color: #f5f5f5;
+  transform: translateX(2px);
 }
 
 .context-menu-item.disabled {
@@ -91,16 +94,7 @@
 }
 
 .context-menu-loading {
-  animation: context-menu-spin 1s linear infinite;
-}
-
-@keyframes context-menu-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  animation: rotate 1s var(--motion-ease-linear) infinite;
 }
 
 .context-menu-label {
@@ -111,6 +105,11 @@
   margin-left: 8px;
   font-size: 10px;
   color: #999;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.context-menu-item:hover .context-menu-arrow {
+  transform: translateX(2px);
 }
 
 .context-menu-submenu {
@@ -124,6 +123,9 @@
   padding: 4px 0;
   min-width: 160px;
   z-index: 10000;
+  transform-origin: left top;
+  animation: slideRightIn var(--motion-duration-fast) var(--motion-ease-out)
+    forwards;
 }
 
 .context-menu-item.has-children:hover .context-menu-submenu {
