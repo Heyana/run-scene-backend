@@ -533,6 +533,31 @@ func (c *DocumentController) GetVersions(ctx *gin.Context) {
 	response.Success(ctx, versions)
 }
 
+// RefreshFolderStats 刷新文件夹统计信息
+// @Summary 刷新文件夹统计信息
+// @Tags 文件库
+// @Produce json
+// @Param id path int true "文件夹ID"
+// @Success 200 {object} response.Response
+// @Router /api/documents/{id}/refresh-stats [post]
+func (c *DocumentController) RefreshFolderStats(ctx *gin.Context) {
+	// 获取文件夹ID
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "无效的文件夹ID")
+		return
+	}
+
+	// 调用 queryService 的刷新统计方法
+	if err := c.queryService.RefreshFolderStats(uint(id)); err != nil {
+		response.Error(ctx, http.StatusInternalServerError, "刷新统计失败: "+err.Error())
+		return
+	}
+
+	response.SuccessWithMsg(ctx, "文件夹统计已刷新", nil)
+}
+
 // RegisterDocumentRoutes 注册文档路由
 func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB, fpService *fileprocessor.FileProcessorService, fpConfig *fileprocessor.Config) {
 	controller := NewDocumentController(db, fpService, fpConfig)
@@ -551,6 +576,7 @@ func RegisterDocumentRoutes(router *gin.Engine, db *gorm.DB, fpService *fileproc
 		// 文件操作
 		api.GET("/:id/download", controller.Download)
 		api.POST("/:id/refresh-thumbnail", controller.RefreshThumbnail) // 刷新缩略图
+		api.POST("/:id/refresh-stats", controller.RefreshFolderStats)   // 刷新文件夹统计
 
 		// 版本管理
 		api.GET("/:id/versions", controller.GetVersions)

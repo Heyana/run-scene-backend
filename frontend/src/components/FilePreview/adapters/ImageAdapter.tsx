@@ -88,7 +88,7 @@ const ImagePreview = defineComponent({
               alt={props.file.name}
               style={{
                 maxWidth: "100%",
-                maxHeight: "80vh",
+                // maxHeight: "80vh",
                 cursor: "pointer",
                 display: "block",
                 margin: "0 auto",

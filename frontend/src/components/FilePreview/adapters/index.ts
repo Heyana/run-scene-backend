@@ -1,6 +1,7 @@
 // 适配器注册中心
 
 import type { IPreviewAdapter } from "../types";
+import SvgAdapter from "./SvgAdapter";
 import ImageAdapter from "./ImageAdapter";
 import VideoAdapter from "./VideoAdapter";
 import DocumentAdapter from "./DocumentAdapter";
@@ -13,6 +14,7 @@ import DefaultAdapter from "./DefaultAdapter";
 
 // 注册所有适配器（按优先级排序）
 const adapters: IPreviewAdapter[] = [
+  SvgAdapter, // SVG 优先使用专用适配器
   ImageAdapter,
   VideoAdapter,
   ModelAdapter,
@@ -32,6 +34,7 @@ export function getAdapter(format: string): IPreviewAdapter {
 
 // 导出所有适配器
 export {
+  SvgAdapter,
   ImageAdapter,
   VideoAdapter,
   ModelAdapter,

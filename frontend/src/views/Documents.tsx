@@ -37,6 +37,7 @@ import {
   deleteDocument,
   createFolder,
   refreshDocumentThumbnail,
+  refreshFolderStats,
   updateDocument,
 } from "@/api/documents";
 import type { Document } from "@/api/documents";
@@ -692,6 +693,20 @@ export default defineComponent({
           },
         },
         {
+          label: "刷新统计",
+          key: "refresh-stats",
+          disabled: !item.is_folder,
+          onClick: async () => {
+            try {
+              await refreshFolderStats(item.id);
+              message.success("文件夹统计已刷新");
+              loadCurrentFolder();
+            } catch (error: any) {
+              message.error(error.response?.data?.msg || "刷新统计失败");
+            }
+          },
+        },
+        {
           label: "更多操作",
           key: "more",
           icon: "",
@@ -977,7 +992,32 @@ export default defineComponent({
             } else {
               const videoFormats = ["mp4", "webm", "avi", "mov"];
 
-              if (item.thumbnail_url) {
+              // SVG 文件直接显示原文件，不使用缩略图
+              if (item.format?.toLowerCase() === "svg") {
+                return (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "10px",
+                      background: "#fff",
+                    }}
+                  >
+                    <img
+                      src={item.file_url}
+                      alt={item.name}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
+                  </div>
+                );
+              } else if (item.thumbnail_url) {
                 return (
                   <Image
                     src={item.thumbnail_url}
@@ -1031,7 +1071,19 @@ export default defineComponent({
               >
                 {item.description || "暂无描述"}
               </div>
-              {!item.is_folder && (
+              {item.is_folder ? (
+                <div style={{ marginTop: "8px" }}>
+                  <Tag color="blue">{item.child_count || 0} 个子项</Tag>
+                  {item.total_count > 0 && (
+                    <>
+                      <Tag color="green">{item.total_count} 个文件</Tag>
+                      <span style={{ fontSize: "12px", color: "#666" }}>
+                        {((item.total_size || 0) / 1024 / 1024).toFixed(2)} MB
+                      </span>
+                    </>
+                  )}
+                </div>
+              ) : (
                 <div style={{ marginTop: "8px" }}>
                   <Tag color={getFileFormatColor(item.format || "")}>
                     {item.format?.toUpperCase()}

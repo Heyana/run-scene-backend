@@ -88,12 +88,28 @@ func (p *ImageProcessor) GenerateThumbnail(filePath string, options ThumbnailOpt
 	fmt.Printf("[ImageProcessor] 输出文件: %s\n", options.OutputPath)
 	fmt.Printf("[ImageProcessor] 尺寸: %d, 质量: %d\n", options.Size, options.Quality)
 
-	err := p.imagemagick.GenerateThumbnail(
-		filePath,
-		options.OutputPath,
-		options.Size,
-		options.Quality,
-	)
+	// 检查是否是 SVG 文件
+	ext := filepath.Ext(filePath)
+	isSVG := ext == ".svg" || ext == ".SVG"
+
+	var err error
+	if isSVG {
+		// SVG 使用特殊处理：保持宽高比，不裁剪
+		err = p.imagemagick.GenerateThumbnailKeepAspect(
+			filePath,
+			options.OutputPath,
+			options.Size,
+			options.Quality,
+		)
+	} else {
+		// 其他图片格式使用正方形裁剪
+		err = p.imagemagick.GenerateThumbnail(
+			filePath,
+			options.OutputPath,
+			options.Size,
+			options.Quality,
+		)
+	}
 
 	if err != nil {
 		fmt.Printf("[ImageProcessor] 生成缩略图失败: %v\n", err)

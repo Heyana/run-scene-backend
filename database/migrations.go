@@ -155,6 +155,28 @@ func runVersionedUpgrades(db *gorm.DB) error {
 		logger.Log.Info("版本 5 升级完成")
 	}
 
+	// 版本 6: 添加文件夹递归统计字段（2026-02-12）
+	if lastVersion < 6 && targetVersion >= 6 {
+		logger.Log.Info("执行版本 6 升级: 添加文件夹递归统计字段...")
+		
+		// 添加新字段（GORM 会自动处理）
+		if err := db.AutoMigrate(&models.Document{}); err != nil {
+			logger.Log.Errorf("自动迁移失败: %v", err)
+		} else {
+			logger.Log.Info("成功添加 total_size, total_count, stats_updated_at 字段")
+		}
+		
+		// 计算所有文件夹的统计信息
+		if err := models.RecalculateAllFolderStats(db); err != nil {
+			logger.Log.Errorf("计算文件夹统计失败: %v", err)
+		} else {
+			logger.Log.Info("成功计算所有文件夹的递归统计")
+		}
+
+		saveLastExecutedVersion(6)
+		logger.Log.Info("版本 6 升级完成")
+	}
+
 	return nil
 }
 

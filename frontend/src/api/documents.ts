@@ -10,6 +10,10 @@ export interface Document {
   parent_id: number | null;
   is_folder: boolean;
   child_count: number;
+  // 递归统计（仅文件夹）
+  total_size: number;
+  total_count: number;
+  stats_updated_at: string | null;
   file_size: number;
   file_path: string;
   file_hash: string;
@@ -133,4 +137,9 @@ export const createFolder = (data: {
 // 刷新文档缩略图
 export const refreshDocumentThumbnail = (id: number) => {
   return http.post(`/documents/${id}/refresh-thumbnail`);
+};
+
+// 刷新文件夹统计信息
+export const refreshFolderStats = (id: number) => {
+  return http.post(`/documents/${id}/refresh-stats`);
 };

@@ -21,6 +21,11 @@ type Document struct {
 	ParentID      *uint      `gorm:"index" json:"parent_id"`        // 父文件夹ID，null表示根目录
 	IsFolder      bool       `gorm:"default:false;index" json:"is_folder"` // 是否是文件夹
 	ChildCount    int        `gorm:"default:0" json:"child_count"`  // 子项数量（文件+文件夹）
+	
+	// 递归统计（仅文件夹有效）
+	TotalSize     int64      `gorm:"default:0" json:"total_size"`   // 递归统计所有子文件的总大小（字节）
+	TotalCount    int        `gorm:"default:0" json:"total_count"`  // 递归统计所有子文件的总数量（不含文件夹）
+	StatsUpdatedAt *time.Time `json:"stats_updated_at,omitempty"`   // 统计信息更新时间
 
 	// 文件信息（仅文件有效，相对于 static 目录的路径）
 	FileSize      int64  `json:"file_size,omitempty"`                      // 字节
@@ -87,7 +92,14 @@ func (d *Document) AfterFind(tx *gorm.DB) error {
 // AfterCreate GORM 钩子：创建后更新父文件夹统计
 func (d *Document) AfterCreate(tx *gorm.DB) error {
 	if d.ParentID != nil {
-		return updateParentChildCount(tx, *d.ParentID)
+		// 更新直接父文件夹的子项数量
+		if err := updateParentChildCount(tx, *d.ParentID); err != nil {
+			return err
+		}
+		// 更新所有祖先文件夹的递归统计
+		if !d.IsFolder {
+			return updateAncestorStats(tx, *d.ParentID, d.FileSize, 1)
+		}
 	}
 	return nil
 }
@@ -95,8 +107,52 @@ func (d *Document) AfterCreate(tx *gorm.DB) error {
 // AfterDelete GORM 钩子：删除后更新父文件夹统计
 func (d *Document) AfterDelete(tx *gorm.DB) error {
 	if d.ParentID != nil {
-		return updateParentChildCount(tx, *d.ParentID)
+		// 更新直接父文件夹的子项数量
+		if err := updateParentChildCount(tx, *d.ParentID); err != nil {
+			return err
+		}
+		// 更新所有祖先文件夹的递归统计
+		if !d.IsFolder {
+			return updateAncestorStats(tx, *d.ParentID, -d.FileSize, -1)
+		} else {
+			// 如果删除的是文件夹，需要减去该文件夹的统计
+			return updateAncestorStats(tx, *d.ParentID, -d.TotalSize, -d.TotalCount)
+		}
 	}
+	return nil
+}
+
+// BeforeUpdate GORM 钩子：更新前处理（用于移动文件）
+func (d *Document) BeforeUpdate(tx *gorm.DB) error {
+	// 检查 parent_id 是否变化（文件移动）
+	if tx.Statement.Changed("ParentID") {
+		var oldDoc Document
+		if err := tx.Model(&Document{}).Where("id = ?", d.ID).First(&oldDoc).Error; err != nil {
+			return err
+		}
+		
+		// 如果 parent_id 发生变化，需要更新新旧父文件夹的统计
+		if oldDoc.ParentID != d.ParentID {
+			// 从旧父文件夹减去
+			if oldDoc.ParentID != nil {
+				if !d.IsFolder {
+					updateAncestorStats(tx, *oldDoc.ParentID, -d.FileSize, -1)
+				} else {
+					updateAncestorStats(tx, *oldDoc.ParentID, -d.TotalSize, -d.TotalCount)
+				}
+			}
+			
+			// 向新父文件夹添加
+			if d.ParentID != nil {
+				if !d.IsFolder {
+					updateAncestorStats(tx, *d.ParentID, d.FileSize, 1)
+				} else {
+					updateAncestorStats(tx, *d.ParentID, d.TotalSize, d.TotalCount)
+				}
+			}
+		}
+	}
+	
 	return nil
 }
 
@@ -107,6 +163,98 @@ func updateParentChildCount(tx *gorm.DB, parentID uint) error {
 		return err
 	}
 	return tx.Model(&Document{}).Where("id = ?", parentID).Update("child_count", count).Error
+}
+
+// updateAncestorStats 递归更新所有祖先文件夹的统计信息
+func updateAncestorStats(tx *gorm.DB, folderID uint, sizeChange int64, countChange int) error {
+	now := time.Now()
+	
+	// 更新当前文件夹
+	if err := tx.Model(&Document{}).Where("id = ? AND is_folder = ?", folderID, true).
+		Updates(map[string]interface{}{
+			"total_size":       gorm.Expr("total_size + ?", sizeChange),
+			"total_count":      gorm.Expr("total_count + ?", countChange),
+			"stats_updated_at": now,
+		}).Error; err != nil {
+		return err
+	}
+	
+	// 查找父文件夹
+	var folder Document
+	if err := tx.Select("parent_id").Where("id = ?", folderID).First(&folder).Error; err != nil {
+		return err
+	}
+	
+	// 如果有父文件夹，递归更新
+	if folder.ParentID != nil {
+		return updateAncestorStats(tx, *folder.ParentID, sizeChange, countChange)
+	}
+	
+	return nil
+}
+
+// RecalculateFolderStats 重新计算文件夹的递归统计（用于修复数据或手动刷新）
+func RecalculateFolderStats(tx *gorm.DB, folderID uint) error {
+	var totalSize int64
+	var totalCount int64
+	
+	// 递归计算所有子文件的大小和数量
+	if err := calculateFolderStatsRecursive(tx, folderID, &totalSize, &totalCount); err != nil {
+		return err
+	}
+	
+	// 更新文件夹统计
+	now := time.Now()
+	return tx.Model(&Document{}).Where("id = ?", folderID).Updates(map[string]interface{}{
+		"total_size":       totalSize,
+		"total_count":      totalCount,
+		"stats_updated_at": now,
+	}).Error
+}
+
+// calculateFolderStatsRecursive 递归计算文件夹统计
+func calculateFolderStatsRecursive(tx *gorm.DB, folderID uint, totalSize *int64, totalCount *int64) error {
+	// 查询直接子项
+	var children []Document
+	if err := tx.Select("id", "is_folder", "file_size").
+		Where("parent_id = ?", folderID).
+		Find(&children).Error; err != nil {
+		return err
+	}
+	
+	for _, child := range children {
+		if child.IsFolder {
+			// 递归计算子文件夹
+			if err := calculateFolderStatsRecursive(tx, child.ID, totalSize, totalCount); err != nil {
+				return err
+			}
+		} else {
+			// 累加文件大小和数量
+			*totalSize += child.FileSize
+			*totalCount++
+		}
+	}
+	
+	return nil
+}
+
+// RecalculateAllFolderStats 重新计算所有文件夹的统计（用于数据修复）
+func RecalculateAllFolderStats(tx *gorm.DB) error {
+	// 查询所有文件夹
+	var folders []Document
+	if err := tx.Select("id").Where("is_folder = ?", true).Find(&folders).Error; err != nil {
+		return err
+	}
+	
+	// 从最深层开始计算（先计算子文件夹，再计算父文件夹）
+	// 这里简化处理，直接遍历所有文件夹
+	for _, folder := range folders {
+		if err := RecalculateFolderStats(tx, folder.ID); err != nil {
+			return err
+		}
+	}
+	
+	return nil
 }
 
 // BuildDocumentURL 构建文档文件的完整 URL（导出供其他包使用）

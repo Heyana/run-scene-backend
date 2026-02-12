@@ -420,3 +420,19 @@ func (q *QueryService) GetAccessLogs(documentID uint, page, pageSize int, action
 	return logs, total, err
 }
 
+
+// RefreshFolderStats 刷新文件夹的递归统计信息
+func (q *QueryService) RefreshFolderStats(folderID uint) error {
+	// 检查是否是文件夹
+	var doc models.Document
+	if err := q.db.Select("is_folder").Where("id = ?", folderID).First(&doc).Error; err != nil {
+		return err
+	}
+	
+	if !doc.IsFolder {
+		return fmt.Errorf("ID %d 不是文件夹", folderID)
+	}
+	
+	// 调用模型层的重新计算方法
+	return models.RecalculateFolderStats(q.db, folderID)
+}

@@ -166,6 +166,31 @@ func (im *ImageMagick) GenerateThumbnail(input, output string, size int, quality
 	return nil
 }
 
+// GenerateThumbnailKeepAspect 生成缩略图（保持宽高比，不裁剪，适用于 SVG）
+func (im *ImageMagick) GenerateThumbnailKeepAspect(input, output string, size int, quality int) error {
+	// ImageMagick 7: magick input.svg -background white -flatten -resize 256x256 -quality 85 output.webp
+	args := []string{
+		input,
+		"-background", "white",                      // 设置背景色为白色
+		"-flatten",                                  // 展平图层
+		"-resize", fmt.Sprintf("%dx%d", size, size), // 保持宽高比缩放
+		"-quality", fmt.Sprintf("%d", quality),
+		output,
+	}
+
+	cmd := exec.Command(im.binPath, args...)
+
+	// 捕获标准输出和错误输出
+	output_bytes, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		return fmt.Errorf("ImageMagick执行失败: %w\n命令: %s %v\n输入文件: %s\n输出文件: %s\n输出信息: %s", 
+			err, im.binPath, args, input, output, string(output_bytes))
+	}
+
+	return nil
+}
+
 // Crop 裁剪图片
 func (im *ImageMagick) Crop(input, output string, x, y, width, height int) error {
 	// ImageMagick 7: magick input.jpg -crop 800x600+100+50 +repage output.jpg
