@@ -253,9 +253,10 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 		// 内容安全策略 - 对于 HTML 文档放宽限制
 		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".htm") {
 			// HTML 文档预览需要更宽松的 CSP
-			c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';")
+			c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http: https: ws: wss: blob:;")
 		} else {
-			c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';")
+			// 其他资源：允许连接到任何 http/https/ws/wss 资源，允许 blob 和 data URL
+			c.Header("Content-Security-Policy", "default-src 'self' blob: data:; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http: https: ws: wss: blob:;")
 		}
 
 		// 引用来源策略

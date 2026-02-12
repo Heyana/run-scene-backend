@@ -37,12 +37,15 @@ import {
   deleteDocument,
   createFolder,
   refreshDocumentThumbnail,
+  updateDocument,
 } from "@/api/documents";
 import type { Document } from "@/api/documents";
 import { showContextMenu } from "@/utils/context-menu";
 import type { MenuItem } from "@/utils/context-menu";
 import "./Documents.less";
 import { useRoute, useRouter } from "vue-router";
+import { zPopConfrimUtils } from "z_vue3";
+import { getFileFormatColor } from "@/constants/fileColors";
 
 export default defineComponent({
   name: "Documents",
@@ -592,6 +595,55 @@ export default defineComponent({
       previewVisible.value = true;
     };
 
+    // 重命名
+    const handleRename = (e: MouseEvent, item: Document) => {
+      zPopConfrimUtils.pop(e, {
+        title: `重命名${item.is_folder ? "文件夹" : "文件"}`,
+        content: ({ triggerClose }) => {
+          let inputValue = item.name;
+
+          return (
+            <div style={{ padding: "8px 0" }}>
+              <Input
+                defaultValue={item.name}
+                placeholder="请输入新名称"
+                style={{ width: "100%" }}
+                onChange={(e: any) => {
+                  inputValue = e.target.value;
+                }}
+                onPressEnter={async () => {
+                  const newName = inputValue.trim();
+                  if (!newName) {
+                    message.warning("请输入名称");
+                    return;
+                  }
+                  if (newName === item.name) {
+                    message.info("名称未改变");
+                    triggerClose();
+                    return;
+                  }
+                  try {
+                    await updateDocument(item.id, { name: newName });
+                    message.success("重命名成功");
+                    triggerClose();
+                    loadCurrentFolder();
+                  } catch (error: any) {
+                    message.error(error.response?.data?.msg || "重命名失败");
+                  }
+                }}
+              />
+              <div
+                style={{ marginTop: "8px", fontSize: "12px", color: "#999" }}
+              >
+                按 Enter 确认
+              </div>
+            </div>
+          );
+        },
+        showFooter: false,
+      });
+    };
+
     // 点击卡片
     const handleCardClick = (item: Document) => {
       if (item.is_folder) {
@@ -649,7 +701,7 @@ export default defineComponent({
               key: "rename",
               icon: "",
               onClick: () => {
-                message.info("重命名功能开发中...");
+                handleRename(e, item);
               },
             },
             {
@@ -981,7 +1033,9 @@ export default defineComponent({
               </div>
               {!item.is_folder && (
                 <div style={{ marginTop: "8px" }}>
-                  <Tag color="blue">{item.format?.toUpperCase()}</Tag>
+                  <Tag color={getFileFormatColor(item.format || "")}>
+                    {item.format?.toUpperCase()}
+                  </Tag>
                   <span style={{ fontSize: "12px", color: "#666" }}>
                     {((item.file_size || 0) / 1024 / 1024).toFixed(2)} MB
                   </span>
