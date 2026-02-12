@@ -1,0 +1,24 @@
+// 适配器注册中心
+
+import type { IPreviewAdapter } from "../types";
+import ImageAdapter from "./ImageAdapter";
+import VideoAdapter from "./VideoAdapter";
+import DocumentAdapter from "./DocumentAdapter";
+import DefaultAdapter from "./DefaultAdapter";
+
+// 注册所有适配器（按优先级排序）
+const adapters: IPreviewAdapter[] = [
+  ImageAdapter,
+  VideoAdapter,
+  DocumentAdapter,
+  DefaultAdapter, // 默认适配器放在最后
+];
+
+// 根据文件格式获取适配器
+export function getAdapter(format: string): IPreviewAdapter {
+  const adapter = adapters.find((a) => a.canPreview(format));
+  return adapter || DefaultAdapter;
+}
+
+// 导出所有适配器
+export { ImageAdapter, VideoAdapter, DocumentAdapter, DefaultAdapter };

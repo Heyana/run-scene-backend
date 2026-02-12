@@ -29,6 +29,7 @@ import {
 } from "@ant-design/icons-vue";
 import ResourceHeader from "@/components/ResourceHeader";
 import ResourceGrid from "@/components/ResourceGrid";
+import { FilePreviewModal } from "@/components/FilePreview";
 import {
   getDocuments,
   uploadDocument,
@@ -90,8 +91,7 @@ export default defineComponent({
 
     // 预览对话框
     const previewVisible = ref(false);
-    const previewUrl = ref("");
-    const previewType = ref("");
+    const previewFile = ref<Document | null>(null);
 
     // 拖拽上传
     const isDragging = ref(false);
@@ -588,20 +588,8 @@ export default defineComponent({
 
     // 预览文件
     const handlePreview = (doc: Document) => {
-      const imageFormats = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
-      const videoFormats = ["mp4", "webm", "avi", "mov"];
-
-      if (imageFormats.includes(doc.format?.toLowerCase())) {
-        previewType.value = "image";
-        previewUrl.value = doc.file_url;
-        previewVisible.value = true;
-      } else if (videoFormats.includes(doc.format?.toLowerCase())) {
-        previewType.value = "video";
-        previewUrl.value = doc.file_url;
-        previewVisible.value = true;
-      } else {
-        window.open(doc.file_url, "_blank");
-      }
+      previewFile.value = doc;
+      previewVisible.value = true;
     };
 
     // 点击卡片
@@ -1134,19 +1122,11 @@ export default defineComponent({
         </Modal>
 
         {/* 预览对话框 */}
-        <Modal
-          v-model={[previewVisible.value, "visible"]}
-          title="预览"
-          footer={null}
-          width={800}
-        >
-          {previewType.value === "image" && (
-            <img src={previewUrl.value} style={{ width: "100%" }} />
-          )}
-          {previewType.value === "video" && (
-            <video src={previewUrl.value} controls style={{ width: "100%" }} />
-          )}
-        </Modal>
+        <FilePreviewModal
+          file={previewFile.value}
+          visible={previewVisible.value}
+          onClose={() => (previewVisible.value = false)}
+        />
 
         {/* 上传文件夹对话框 */}
         <Modal
