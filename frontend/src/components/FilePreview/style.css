@@ -2,9 +2,10 @@
 
 .file-preview-wrapper {
   min-height: 400px;
-  display: flex;
   align-items: center;
   justify-content: center;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* ==================== 通用样式 ==================== */
@@ -67,6 +68,18 @@
 /* ==================== 文档预览 ==================== */
 .document-preview-container {
   min-height: 400px;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+}
+.document-preview-container > div {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+}
+.vue-office-pdf {
+  width: 100%;
+  /* height: 100%; */
 }
 
 .text-preview {
@@ -165,4 +178,17 @@
   .default-preview-container .file-name {
     font-size: 16px;
   }
+}
+
+/* 组件区域 */
+.vue-office-excel-main,
+.x-spreadsheet {
+  width: 100%;
+  height: 100%;
+}
+
+.vue-office-pdf-wrapper {
+  /* background-color: transparent !important; */
+  padding: 0 !important;
+  /* height: 100%; */
 }

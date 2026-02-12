@@ -4,12 +4,22 @@ import type { IPreviewAdapter } from "../types";
 import ImageAdapter from "./ImageAdapter";
 import VideoAdapter from "./VideoAdapter";
 import DocumentAdapter from "./DocumentAdapter";
+import ModelAdapter from "./ModelAdapter";
+import HtmlAdapter from "./HtmlAdapter";
+import TextAdapter from "./TextAdapter";
+import ExcelAdapter from "./ExcelAdapter";
+import WordAdapter from "./WordAdapter";
 import DefaultAdapter from "./DefaultAdapter";
 
 // 注册所有适配器（按优先级排序）
 const adapters: IPreviewAdapter[] = [
   ImageAdapter,
   VideoAdapter,
+  ModelAdapter,
+  HtmlAdapter,
+  TextAdapter,
+  ExcelAdapter,
+  WordAdapter,
   DocumentAdapter,
   DefaultAdapter, // 默认适配器放在最后
 ];
@@ -21,4 +31,14 @@ export function getAdapter(format: string): IPreviewAdapter {
 }
 
 // 导出所有适配器
-export { ImageAdapter, VideoAdapter, DocumentAdapter, DefaultAdapter };
+export {
+  ImageAdapter,
+  VideoAdapter,
+  ModelAdapter,
+  HtmlAdapter,
+  TextAdapter,
+  ExcelAdapter,
+  WordAdapter,
+  DocumentAdapter,
+  DefaultAdapter,
+};

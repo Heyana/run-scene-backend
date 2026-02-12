@@ -4,6 +4,7 @@ package processors
 import (
 	"context"
 	"fmt"
+	"go_wails_project_manager/utils"
 	"go_wails_project_manager/utils/document"
 	"go_wails_project_manager/utils/image"
 	"os"
@@ -36,7 +37,7 @@ func (p *DocumentProcessor) Name() string {
 func (p *DocumentProcessor) Support(format string) bool {
 	supported := []string{
 		"pdf", "doc", "docx", "ppt", "pptx",
-		"xls", "xlsx", "txt", "md",
+		"xls", "xlsx", "txt", "md", "html", "htm",
 	}
 
 	for _, f := range supported {
@@ -124,6 +125,28 @@ func (p *DocumentProcessor) GenerateThumbnail(filePath string, options Thumbnail
 	fmt.Printf("[DocumentProcessor] 输出文件: %s\n", options.OutputPath)
 
 	ext := strings.ToLower(filepath.Ext(filePath))
+	
+	// HTML 文件使用 chromedp 截图（复用 utils.GenerateThumbnail）
+	if ext == ".html" || ext == ".htm" {
+		// 将文件路径转换为 file:// URL
+		absPath, err := filepath.Abs(filePath)
+		if err != nil {
+			return "", fmt.Errorf("获取绝对路径失败: %v", err)
+		}
+		
+		fileURL := "file:///" + filepath.ToSlash(absPath)
+		fmt.Printf("[DocumentProcessor] HTML 文件 URL: %s\n", fileURL)
+		
+		// 复用 utils.GenerateThumbnail 生成截图（1280x720）
+		err = utils.GenerateThumbnail(fileURL, options.OutputPath, 1280, 720)
+		if err != nil {
+			fmt.Printf("[DocumentProcessor] HTML 截图失败: %v\n", err)
+			return "", err
+		}
+		
+		fmt.Printf("[DocumentProcessor] HTML 截图成功: %s\n", options.OutputPath)
+		return options.OutputPath, nil
+	}
 	
 	// 如果是 Office 文档或 PDF，使用 LibreOffice
 	if p.libreoffice != nil && (ext == ".doc" || ext == ".docx" || ext == ".ppt" || ext == ".pptx" || 

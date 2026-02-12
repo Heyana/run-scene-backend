@@ -19,3 +19,4 @@ app-linux-fixed
 *.db
 *.exe
 /static/libs
+/frontend/docs/vue-office-master

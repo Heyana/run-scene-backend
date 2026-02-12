@@ -229,11 +229,18 @@ func isStaticResource(path string) bool {
 // SecurityHeadersMiddleware 添加安全响应头
 func SecurityHeadersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+
 		// 防止MIME类型嗅探
 		c.Header("X-Content-Type-Options", "nosniff")
 
-		// 防止点击劫持
-		c.Header("X-Frame-Options", "SAMEORIGIN")
+		// 防止点击劫持 - 对于 HTML 文档，不设置 X-Frame-Options 以允许 iframe 预览
+		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".htm") {
+			// HTML 文档不设置 X-Frame-Options，允许 iframe 嵌入
+		} else {
+			// 其他资源使用 SAMEORIGIN
+			c.Header("X-Frame-Options", "SAMEORIGIN")
+		}
 
 		// XSS保护
 		c.Header("X-XSS-Protection", "1; mode=block")
@@ -243,8 +250,13 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 
-		// 内容安全策略
-		c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';")
+		// 内容安全策略 - 对于 HTML 文档放宽限制
+		if strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".htm") {
+			// HTML 文档预览需要更宽松的 CSP
+			c.Header("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';")
+		} else {
+			c.Header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';")
+		}
 
 		// 引用来源策略
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")

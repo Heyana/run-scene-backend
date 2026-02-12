@@ -11,13 +11,19 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@vue-office/docx": "^1.6.3",
+    "@vue-office/excel": "^1.7.14",
+    "@vue-office/pdf": "^2.0.10",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.13.2",
     "less": "^4.5.1",
     "less-loader": "7.3.0",
+    "mammoth": "^1.11.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.24",
+    "vue-demi": "0.14.6",
     "vue-router": "^4.6.4",
+    "xlsx": "^0.18.5",
     "z_vue3": "^0.0.46"
   },
   "devDependencies": {
