@@ -12,6 +12,7 @@ import (
 	"go_wails_project_manager/services"
 	ai3dService "go_wails_project_manager/services/ai3d"
 	"go_wails_project_manager/services/ai3d/adapters"
+	"go_wails_project_manager/services/audit"
 	"go_wails_project_manager/services/fileprocessor"
 	"go_wails_project_manager/services/task"
 	textureServices "go_wails_project_manager/services/texture"
@@ -23,15 +24,16 @@ import (
 
 // AppCore 应用程序核心结构
 type AppCore struct {
-	Server                *server.Server
-	Log                   *logrus.Logger
-	BackupScheduler       *services.BackupScheduler
-	TextureSyncService    *textureServices.SyncService
-	AI3DTaskService       *ai3dService.TaskService
-	FileProcessorService  *fileprocessor.FileProcessorService
-	FileProcessorConfig   *fileprocessor.Config
-	TaskService           *task.TaskService
-	IsRunning             bool
+	Server                  *server.Server
+	Log                     *logrus.Logger
+	BackupScheduler         *services.BackupScheduler
+	AuditArchiveScheduler   *audit.ArchiveScheduler
+	TextureSyncService      *textureServices.SyncService
+	AI3DTaskService         *ai3dService.TaskService
+	FileProcessorService    *fileprocessor.FileProcessorService
+	FileProcessorConfig     *fileprocessor.Config
+	TaskService             *task.TaskService
+	IsRunning               bool
 }
 
 // NewAppCore 创建新的应用核心实例
@@ -105,6 +107,12 @@ func (a *AppCore) InitDatabases() error {
 	// 初始化文件处理器服务
 	if err := a.InitFileProcessorService(); err != nil {
 		a.Log.Errorf("文件处理器服务初始化失败: %v", err)
+		return err
+	}
+
+	// 初始化审计服务
+	if err := a.InitAuditService(); err != nil {
+		a.Log.Errorf("审计服务初始化失败: %v", err)
 		return err
 	}
 
@@ -302,6 +310,42 @@ func (a *AppCore) InitFileProcessorService() error {
 	return nil
 }
 
+// InitAuditService 初始化审计服务
+func (a *AppCore) InitAuditService() error {
+	a.Log.Info("正在初始化审计服务...")
+
+	// 加载审计配置
+	auditConfig, err := config.LoadAuditConfig()
+	if err != nil {
+		a.Log.Warnf("加载审计配置失败: %v，将使用默认配置", err)
+		auditConfig = &config.AuditConfig{
+			Enabled: false,
+		}
+	}
+
+	if !auditConfig.Enabled {
+		a.Log.Info("审计服务未启用")
+		return nil
+	}
+
+	// 获取数据库连接
+	db, err := database.GetDB()
+	if err != nil {
+		return err
+	}
+
+	// 创建审计归档调度器
+	a.AuditArchiveScheduler = audit.NewArchiveScheduler(db, auditConfig)
+
+	// 启动归档调度器
+	if err := a.AuditArchiveScheduler.Start(); err != nil {
+		return err
+	}
+
+	a.Log.Info("审计服务初始化成功")
+	return nil
+}
+
 // StartServer 启动HTTP服务器
 func (a *AppCore) StartServer() error {
 	// 创建并启动 Gin 服务器
@@ -381,7 +425,14 @@ func (a *AppCore) Shutdown() {
 		a.Log.Info("✅ 备份调度器已停止")
 	}
 
-	// 5. 停止 HTTP 服务器
+	// 5. 停止审计归档调度器
+	if a.AuditArchiveScheduler != nil {
+		a.Log.Info("⏳ 正在停止审计归档调度器...")
+		a.AuditArchiveScheduler.Stop()
+		a.Log.Info("✅ 审计归档调度器已停止")
+	}
+
+	// 6. 停止 HTTP 服务器
 	if err := a.StopServer(); err != nil {
 		a.Log.Errorf("❌ 停止服务器失败: %v", err)
 	} else {

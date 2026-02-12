@@ -33,6 +33,7 @@ type OverviewStats struct {
 	Assets    ResourceStats `json:"assets"`
 	AI3D      ResourceStats `json:"ai3d"`
 	Documents ResourceStats `json:"documents"` // 文件库统计
+	Audit     ResourceStats `json:"audit"`     // 审计日志统计
 }
 
 // StorageInfo 存储信息
@@ -107,6 +108,14 @@ func (ss *StatisticsService) GetOverview() (*OverviewStats, error) {
 	}
 	stats.Documents = documentStats
 
+	// 审计日志统计
+	auditStats, err := ss.getResourceStats("audit")
+	if err != nil {
+		// 审计统计失败不影响整体，使用空值
+		auditStats = ResourceStats{}
+	}
+	stats.Audit = auditStats
+
 	return stats, nil
 }
 
@@ -162,6 +171,9 @@ func (ss *StatisticsService) GetResourceCount(resourceType string) (int64, error
 	case "document":
 		// 文件库统计 - 只统计文件，不包括文件夹
 		err = ss.db.Model(&models.Document{}).Where("is_folder = ?", false).Count(&count).Error
+	case "audit":
+		// 审计日志统计
+		err = ss.db.Model(&models.AuditLog{}).Count(&count).Error
 	default:
 		return 0, fmt.Errorf("未知的资源类型: %s", resourceType)
 	}
@@ -224,6 +236,8 @@ func (ss *StatisticsService) getCountSince(resourceType string, since time.Time)
 		err = ss.db.Model(&task).Table("ai3d_tasks").Where("created_at >= ?", since).Count(&count).Error
 	case "document":
 		err = ss.db.Model(&models.Document{}).Where("is_folder = ? AND created_at >= ?", false, since).Count(&count).Error
+	case "audit":
+		err = ss.db.Model(&models.AuditLog{}).Where("created_at >= ?", since).Count(&count).Error
 	}
 
 	return count, err
@@ -250,6 +264,8 @@ func (ss *StatisticsService) getCountBetween(resourceType string, start, end tim
 		err = ss.db.Model(&task).Table("ai3d_tasks").Where("created_at >= ? AND created_at < ?", start, end).Count(&count).Error
 	case "document":
 		err = ss.db.Model(&models.Document{}).Where("is_folder = ? AND created_at >= ? AND created_at < ?", false, start, end).Count(&count).Error
+	case "audit":
+		err = ss.db.Model(&models.AuditLog{}).Where("created_at >= ? AND created_at < ?", start, end).Count(&count).Error
 	}
 
 	return count, err

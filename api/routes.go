@@ -14,6 +14,7 @@ import (
 	"go_wails_project_manager/middleware"
 	"go_wails_project_manager/response"
 	ai3dService "go_wails_project_manager/services/ai3d"
+	"go_wails_project_manager/services/audit"
 	"go_wails_project_manager/services/fileprocessor"
 	"go_wails_project_manager/services/task"
 
@@ -39,6 +40,22 @@ func Ping(c *gin.Context) {
 
 // RegisterRoutes 注册API路由
 func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService interface{}, fileProcessorService interface{}, fileProcessorConfig interface{}, taskService interface{}) {
+	// 初始化审计服务
+	auditConfig, _ := config.LoadAuditConfig()
+	var auditService *audit.AuditService
+	var auditQueryService *audit.QueryService
+	var auditArchiveService *audit.ArchiveService
+	var auditController *controllers.AuditController
+	
+	if auditConfig != nil && auditConfig.Enabled {
+		auditService = audit.NewAuditService(database.MustGetDB(), auditConfig)
+		auditQueryService = audit.NewQueryService(database.MustGetDB(), auditConfig)
+		auditArchiveService = audit.NewArchiveService(database.MustGetDB(), auditConfig)
+		auditController = controllers.NewAuditController(auditQueryService, auditArchiveService)
+		
+		logger.Log.Info("审计服务已启动")
+	}
+	
 	// 初始化有用的控制器
 	backupController := controllers.NewBackupController()
 	securityController := controllers.NewSecurityController()
@@ -119,6 +136,12 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 
 	// 9. 敏感路径保护
 	router.Use(ProtectSensitivePathsMiddleware())
+
+	// 10. 审计中间件（如果启用）
+	if auditService != nil {
+		router.Use(middleware.AuditMiddleware(auditService))
+		logger.Log.Info("审计中间件已启用")
+	}
 
 	// 根级别健康检查端点（供 Electron 检测）
 	router.GET("/health", func(c *gin.Context) {
@@ -624,6 +647,21 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 				fileprocessor.GET("/tasks/:id", fileProcessorController.GetTask)                // 获取任务详情
 				fileprocessor.POST("/tasks/:id/cancel", fileProcessorController.CancelTask)     // 取消任务
 				fileprocessor.POST("/tasks/:id/retry", fileProcessorController.RetryTask)       // 重试任务
+			}
+		}
+
+		// 审计日志API
+		if auditController != nil {
+			audit := api.Group("/audit")
+			{
+				audit.GET("/logs", auditController.ListLogs)                                    // 查询审计日志列表
+				audit.GET("/logs/:id", auditController.GetLog)                                  // 获取单条审计日志
+				audit.GET("/users/:user_id/logs", auditController.GetUserLogs)                  // 获取用户的审计日志
+				audit.GET("/resources/:resource/:resource_id/logs", auditController.GetResourceLogs) // 获取资源的审计日志
+				audit.GET("/statistics", auditController.GetStatistics)                         // 获取统计信息
+				audit.POST("/archive", auditController.TriggerArchive)                          // 手动触发归档
+				audit.GET("/archive/statistics", auditController.GetArchiveStatistics)          // 获取归档统计信息
+				audit.GET("/archive/files", auditController.ListArchiveFiles)                   // 列出归档文件
 			}
 		}
 

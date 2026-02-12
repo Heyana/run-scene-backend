@@ -10,6 +10,8 @@ import {
   ArrowDownOutlined,
   RocketOutlined,
   ThunderboltOutlined,
+  FileTextOutlined,
+  AuditOutlined,
 } from "@ant-design/icons-vue";
 import {
   getOverview,
@@ -33,6 +35,7 @@ export default defineComponent({
       assets: { total: 0, trend: 0, recent_count: 0 },
       ai3d: { total: 0, trend: 0, recent_count: 0 },
       documents: { total: 0, trend: 0, recent_count: 0 },
+      audit: { total: 0, trend: 0, recent_count: 0 },
     });
 
     // 最近活动
@@ -156,7 +159,7 @@ export default defineComponent({
         },
         {
           title: "文件库",
-          icon: FolderOutlined,
+          icon: FileTextOutlined,
           description: "公司文档资料管理",
           path: "/documents",
           color: "#13c2c2",
@@ -169,6 +172,14 @@ export default defineComponent({
           path: "/ai3d",
           color: "#eb2f96",
           count: stats.value.ai3d.total,
+        },
+        {
+          title: "审计日志",
+          icon: AuditOutlined,
+          description: "系统操作审计记录",
+          path: "/audit-logs",
+          color: "#faad14",
+          count: stats.value.audit.total,
         },
       ];
 
@@ -287,6 +298,90 @@ export default defineComponent({
                     }}
                   >
                     {Math.abs(stats.value.assets.trend).toFixed(1)}% 本月
+                  </span>
+                </div>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* 第二行统计卡片 */}
+          <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false} class="stat-card stat-card-cyan">
+                <Statistic
+                  title="文件总数"
+                  value={stats.value.documents.total}
+                  prefix={<FileTextOutlined />}
+                  valueStyle={{ color: "#13c2c2" }}
+                />
+                <div class="stat-trend">
+                  {stats.value.documents.trend >= 0 ? (
+                    <ArrowUpOutlined style={{ color: "#52c41a" }} />
+                  ) : (
+                    <ArrowDownOutlined style={{ color: "#ff4d4f" }} />
+                  )}
+                  <span
+                    style={{
+                      color:
+                        stats.value.documents.trend >= 0
+                          ? "#52c41a"
+                          : "#ff4d4f",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    {Math.abs(stats.value.documents.trend).toFixed(1)}% 本月
+                  </span>
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false} class="stat-card stat-card-pink">
+                <Statistic
+                  title="AI任务"
+                  value={stats.value.ai3d.total}
+                  prefix={<RocketOutlined />}
+                  valueStyle={{ color: "#eb2f96" }}
+                />
+                <div class="stat-trend">
+                  {stats.value.ai3d.trend >= 0 ? (
+                    <ArrowUpOutlined style={{ color: "#52c41a" }} />
+                  ) : (
+                    <ArrowDownOutlined style={{ color: "#ff4d4f" }} />
+                  )}
+                  <span
+                    style={{
+                      color:
+                        stats.value.ai3d.trend >= 0 ? "#52c41a" : "#ff4d4f",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    {Math.abs(stats.value.ai3d.trend).toFixed(1)}% 本月
+                  </span>
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card bordered={false} class="stat-card stat-card-gold">
+                <Statistic
+                  title="审计日志"
+                  value={stats.value.audit.total}
+                  prefix={<AuditOutlined />}
+                  valueStyle={{ color: "#faad14" }}
+                />
+                <div class="stat-trend">
+                  {stats.value.audit.trend >= 0 ? (
+                    <ArrowUpOutlined style={{ color: "#52c41a" }} />
+                  ) : (
+                    <ArrowDownOutlined style={{ color: "#ff4d4f" }} />
+                  )}
+                  <span
+                    style={{
+                      color:
+                        stats.value.audit.trend >= 0 ? "#52c41a" : "#ff4d4f",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    {Math.abs(stats.value.audit.trend).toFixed(1)}% 本月
                   </span>
                 </div>
               </Card>

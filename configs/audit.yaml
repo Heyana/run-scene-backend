@@ -1,0 +1,113 @@
+# 审计系统配置文件
+
+audit:
+  # 审计日志启用
+  enabled: true # 是否启用审计日志
+
+  # 数据保留策略
+  retention_days: 7 # 数据库保留天数（7天后自动归档）
+
+  # 归档配置
+  archive:
+    enabled: true # 是否启用自动归档
+    schedule: "0 2 * * *" # 归档任务执行时间（cron表达式，默认每天凌晨2点）
+
+    # NAS 存储配置
+    nas_enabled: true # 是否启用 NAS 存储归档文件
+    nas_path: "\\\\192.168.3.10\\project\\editor_v2\\audit_archives" # NAS SMB 共享路径（Windows 格式）
+
+    # 本地存储配置（备用）
+    local_storage_enabled: false # 是否同时保存到本地
+    storage_dir: "data/audit_archives" # 本地存储路径（相对于项目根目录）
+
+    # 归档文件格式
+    format: "json" # 归档文件格式：json, csv
+    compression: true # 是否压缩归档文件（gzip）
+
+    # 归档文件命名规则
+    # 路径格式：{nas_path}/{year}/{month}/{day}/audit_{timestamp}.json
+    # 示例：\\192.168.3.10\project\editor_v2\audit_archives\2026\02\05\audit_20260205_020000.json
+
+  # 日志记录配置
+  log:
+    # 记录的操作类型（为空表示记录所有）
+    actions:
+      - login
+      - logout
+      - create
+      - update
+      - delete
+      - download
+      - upload
+      - move
+      - rename
+      - share
+      - export
+      - import
+
+    # 记录的资源类型（为空表示记录所有）
+    resources:
+      - document
+      - folder
+      - user
+      - project
+      - model
+      - texture
+
+    # 排除的路径（不记录审计日志）
+    exclude_paths:
+      - /api/health
+      - /api/ping
+      - /metrics
+      - /api/statistics/*
+      - /api/audit/*
+      - /website/*
+      - /documents/*
+      - /models/*
+      - /textures/*
+      - /assets/*
+      - /projects/*
+      - /hunyuan/*
+      - /meshy/*
+
+    # 敏感字段脱敏
+    sensitive_fields:
+      - password
+      - token
+      - secret
+      - api_key
+      - access_token
+      - refresh_token
+
+    # 请求体记录
+    record_request_body: true # 是否记录请求体
+    max_request_body_size: 10240 # 最大请求体大小（字节，超过则截断）
+
+    # 响应体记录
+    record_response_body: false # 是否记录响应体（默认不记录，避免数据量过大）
+    max_response_body_size: 10240 # 最大响应体大小（字节）
+
+  # 性能配置
+  performance:
+    async_write: true # 异步写入（推荐）
+    buffer_size: 1000 # 缓冲队列大小
+    batch_size: 100 # 批量写入大小
+    flush_interval: 5 # 刷新间隔（秒）
+
+  # 查询配置
+  query:
+    default_page_size: 20 # 默认分页大小
+    max_page_size: 100 # 最大分页大小
+    enable_full_text_search: false # 是否启用全文搜索（需要数据库支持）
+
+
+# ===========================================
+# 环境变量覆盖说明
+# ===========================================
+# 以上所有配置都可以通过环境变量覆盖，变量名规则：
+# - audit.enabled -> AUDIT_ENABLED
+# - audit.retention_days -> AUDIT_RETENTION_DAYS
+# - audit.archive.nas_path -> AUDIT_ARCHIVE_NAS_PATH
+# 等等...
+#
+# 优先级: 环境变量 > YAML配置文件 > 默认值

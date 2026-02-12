@@ -177,6 +177,21 @@ func runVersionedUpgrades(db *gorm.DB) error {
 		logger.Log.Info("版本 6 升级完成")
 	}
 
+	// 版本 7: 创建审计日志表（2026-02-12）
+	if lastVersion < 7 && targetVersion >= 7 {
+		logger.Log.Info("执行版本 7 升级: 创建审计日志表...")
+		
+		// 创建审计日志表
+		if err := db.AutoMigrate(&models.AuditLog{}); err != nil {
+			logger.Log.Errorf("创建审计日志表失败: %v", err)
+		} else {
+			logger.Log.Info("成功创建 audit_logs 表")
+		}
+
+		saveLastExecutedVersion(7)
+		logger.Log.Info("版本 7 升级完成")
+	}
+
 	return nil
 }
 

@@ -13,6 +13,8 @@ import {
   BoxPlotOutlined,
   FileImageOutlined,
   RocketOutlined,
+  FileTextOutlined,
+  AuditOutlined,
 } from "@ant-design/icons-vue";
 
 const { Header, Sider, Content } = Layout;
@@ -56,9 +58,19 @@ export default defineComponent({
         label: <RouterLink to="/assets">资产库</RouterLink>,
       },
       {
+        key: "/documents",
+        icon: () => <FileTextOutlined />,
+        label: <RouterLink to="/documents">文件库</RouterLink>,
+      },
+      {
         key: "/ai3d",
         icon: () => <RocketOutlined />,
         label: <RouterLink to="/ai3d">AI 3D</RouterLink>,
+      },
+      {
+        key: "/audit-logs",
+        icon: () => <AuditOutlined />,
+        label: <RouterLink to="/audit-logs">审计日志</RouterLink>,
       },
       {
         key: "/about",
