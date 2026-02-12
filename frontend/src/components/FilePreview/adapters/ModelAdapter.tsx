@@ -1,7 +1,9 @@
-import { defineComponent, ref, onMounted, onUnmounted } from "vue";
+import { defineComponent, ref, onMounted, onUnmounted, reactive } from "vue";
 import { Spin } from "ant-design-vue";
 import type { IPreviewAdapter, PreviewAdapterProps } from "../types";
-
+import type RunScene from "run-scene-v2/types/src/RunScene";
+import ThreeScene from "@/components/three-scene/index.vue";
+import "./styles/model.less";
 // 3D 模型预览适配器
 class ModelPreviewAdapter implements IPreviewAdapter {
   name = "ModelPreviewAdapter";
@@ -38,9 +40,155 @@ const ModelPreview = defineComponent({
     const containerRef = ref<HTMLDivElement>();
     const loading = ref(true);
     const error = ref(false);
+    const url =
+      "http://192.168.3.8:8080/file?path=project/linkpoint/&key=202602121521042811001001202673";
+    const defRunSceneConfig = {
+      renderConfig: {
+        matrixAutoUpdate: true,
+        scriptFrame: 60,
+        event: {
+          // ignores: ["resize"],
+        },
+      },
+      // showFps: getEnvMode() === "local",
 
+      camera: {
+        showBackground: true,
+      },
+    };
+    const constOvewview = {
+      options: {
+        ...defRunSceneConfig,
+        ltPp: {
+          modules: {
+            ignores: ["SelectiveBloom", "Outline", "Outline1"],
+          },
+        },
+        // mode: "editor",
+
+        renderConfig: {
+          // matrixAutoUpdate: true,
+          scriptFrame: 60,
+          event: {
+            // ignores: ["resize"],
+          },
+          // frame: 30,
+
+          getSize: () => {
+            const dom = document.querySelector(".model-canvas-container");
+            const b = dom?.getBoundingClientRect();
+            console.log("Log-- ", b, "b");
+            return {
+              width: 1200,
+              height: document.body.getBoundingClientRect().height * 0.8,
+            };
+          },
+        },
+        loadConfig: {
+          // lazy: true,
+          block: {
+            paths: [],
+          },
+          engineDom: {
+            forceFullSize: true,
+          },
+        },
+      },
+    };
+
+    // 根据文件格式获取 MIME 类型
+    const getMimeType = (format: string): string => {
+      const mimeTypes: Record<string, string> = {
+        glb: "model/gltf-binary",
+        gltf: "model/gltf+json",
+        fbx: "application/octet-stream",
+        obj: "text/plain",
+      };
+      return mimeTypes[format.toLowerCase()] || "application/octet-stream";
+    };
+
+    // 下载文件并转换为 File 对象
+    const downloadFile = async () => {
+      try {
+        const response = await fetch(props.file.file_url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const mimeType = getMimeType(props.file.format);
+        const file = new File(
+          [blob],
+          props.file.name + "." + props.file.format,
+          {
+            type: mimeType,
+          },
+        );
+
+        console.log("文件下载完成:", file, "MIME类型:", mimeType);
+        return file;
+      } catch (err) {
+        console.error("文件下载失败:", err);
+        error.value = true;
+        props.onError?.(err as Error);
+      }
+    };
+    let runScene: RunScene | undefined;
+    const pageScene = new (class {
+      options = constOvewview.options;
+      onPreLoaded = async (theRunScene: RunScene) => {
+        // const ls = [1, 2, 3, 4, 5];
+        // ls.reverse().map((i) => {
+        //   setTimeout(async () => {
+        //     await theRunScene.cameraEx.setTemp(i + "", {
+        //       time: 0.1,
+        //       onComplete: () => {
+        //         console.log("Log-- ", "onComplete");
+        //       },
+        //     });
+        //   }, 1);
+        // });
+
+        console.log("Log-- ", theRunScene, "theRunScene");
+      };
+      getPath() {
+        return url;
+      }
+      data = reactive({});
+      onLoaded = async (
+        theRunScene: RunScene,
+        map: {
+          dom: HTMLElement;
+        },
+      ) => {
+        runScene = theRunScene;
+        // 先下载文件
+        const file = await downloadFile();
+
+        if (!file) {
+          throw new Error("文件下载失败");
+        }
+        const results = await theRunScene.fileEx.parseFiles([file], {
+          clearMaterial: false,
+        });
+        console.log("Log-- ", results, "results");
+        results.map((map) => {
+          const { result, type, file } = map;
+          console.log("Log-- ", map, "map");
+          if (type === "model") {
+            theRunScene.modelEx.add(result, undefined, {
+              isClone: true,
+              select: true,
+            });
+            theRunScene.modelEx.focus(result[0]);
+
+            theRunScene.cb.loaderer.gltf.modelAdded.cb({ models: result });
+          }
+        });
+      };
+    })();
     // TODO: 初始化 3D 渲染器（Three.js）
-    const initRenderer = () => {
+    const initRenderer = async () => {
       try {
         loading.value = true;
         error.value = false;
@@ -55,10 +203,8 @@ const ModelPreview = defineComponent({
         console.log("TODO: 初始化 3D 渲染器", props.file);
 
         // 模拟加载完成
-        setTimeout(() => {
-          loading.value = false;
-          props.onLoad?.();
-        }, 1000);
+        loading.value = false;
+        props.onLoad?.();
       } catch (err: any) {
         error.value = true;
         loading.value = false;
@@ -72,6 +218,7 @@ const ModelPreview = defineComponent({
       // 1. 停止渲染循环
       // 2. 释放几何体、材质、纹理
       // 3. 销毁渲染器
+      runScene?.clean();
       console.log("TODO: 清理 3D 渲染器资源");
     };
 
@@ -108,15 +255,17 @@ const ModelPreview = defineComponent({
             }}
           >
             {/* Three.js 渲染器将挂载到这里 */}
-            <div
-              style={{
-                textAlign: "center",
-                paddingTop: "200px",
-                color: "#999",
-              }}
-            >
-              TODO: Three.js 3D 模型渲染
-            </div>
+
+            <ThreeScene
+              key="overview-three-scene"
+              class="three-scene"
+              ref="childComp"
+              type="scene"
+              options={pageScene.options}
+              onLoaded={pageScene.onLoaded}
+              onPreLoaded={pageScene.onPreLoaded}
+              path={pageScene.getPath()}
+            ></ThreeScene>
           </div>
         )}
       </div>
