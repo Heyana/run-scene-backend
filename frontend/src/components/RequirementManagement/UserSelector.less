@@ -1,0 +1,90 @@
+.user-selector-modal {
+  .user-selector {
+    .search-input {
+      margin-bottom: 16px;
+    }
+
+    .user-list {
+      max-height: 400px;
+      overflow-y: auto;
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #c9cdd4;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .user-item {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        gap: 12px;
+
+        &:hover {
+          background: #f7f8fa;
+        }
+
+        &.current {
+          background: #e8f3ff;
+        }
+
+        &.unassign {
+          border-bottom: 1px solid #e5e6eb;
+          margin-bottom: 8px;
+
+          .user-info {
+            .user-name {
+              color: #646a73;
+            }
+
+            .user-email {
+              color: #8f959e;
+            }
+          }
+        }
+
+        .user-info {
+          flex: 1;
+          min-width: 0;
+
+          .user-name {
+            font-size: 14px;
+            color: #1f2329;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .current-tag {
+              font-size: 12px;
+              color: #1890ff;
+              background: #e8f3ff;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-weight: 400;
+            }
+          }
+
+          .user-email {
+            font-size: 12px;
+            color: #646a73;
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      }
+    }
+  }
+}

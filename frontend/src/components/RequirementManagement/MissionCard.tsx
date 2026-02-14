@@ -19,10 +19,15 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: ["click"],
+  emits: ["click", "assignClick"],
   setup(props, { emit }) {
     const handleClick = () => {
       emit("click", props.mission);
+    };
+
+    const handleAssignClick = (e: Event) => {
+      e.stopPropagation(); // 阻止冒泡，不触发卡片点击
+      emit("assignClick", props.mission);
     };
 
     const formatDate = (dateStr?: string) => {
@@ -51,7 +56,7 @@ export default defineComponent({
           )}
 
           <div class="mission-footer">
-            <div class="mission-assignee">
+            <div class="mission-assignee" onClick={handleAssignClick}>
               {props.mission.assignee ? (
                 <Space size={4}>
                   <Avatar size={20} src={props.mission.assignee.avatar}>

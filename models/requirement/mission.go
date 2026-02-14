@@ -7,37 +7,35 @@ import (
 
 // Mission 任务
 type Mission struct {
-	ID              uint       `gorm:"primaryKey" json:"id"`
-	MissionListID   uint       `gorm:"not null;index" json:"mission_list_id"`
-	MissionColumnID *uint      `gorm:"index" json:"mission_column_id"` // 所属列ID（可选，用于看板视图）
-	ProjectID       uint       `gorm:"not null;index" json:"project_id"`
-	MissionKey      string     `gorm:"size:50;uniqueIndex" json:"mission_key"` // 如 PRJ-001
-	Title           string     `gorm:"size:200;not null" json:"title"`
-	Description     string     `gorm:"type:text" json:"description"`
-	Type            string     `gorm:"size:20;not null;index" json:"type"` // feature/enhancement/bug
-	Priority        string     `gorm:"size:10;not null;index" json:"priority"` // P0/P1/P2/P3
-	Status          string     `gorm:"size:20;not null;index" json:"status"` // todo/in_progress/done/closed
-	AssigneeID      *uint      `gorm:"index" json:"assignee_id"`
-	ReporterID      uint       `gorm:"not null;index" json:"reporter_id"`
-	EstimatedHours  float64    `gorm:"default:0" json:"estimated_hours"`
-	ActualHours     float64    `gorm:"default:0" json:"actual_hours"`
-	StartDate       *time.Time `json:"start_date"`
-	DueDate         *time.Time `gorm:"index" json:"due_date"`
-	CompletedAt     *time.Time `json:"completed_at"`
-	SortOrder       int        `gorm:"default:0" json:"sort_order"`
-	CreatedAt       time.Time  `gorm:"index" json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID             uint       `gorm:"primaryKey" json:"id"`
+	MissionListID  uint       `gorm:"not null;index" json:"mission_list_id"`
+	ProjectID      uint       `gorm:"not null;index" json:"project_id"`
+	MissionKey     string     `gorm:"size:50;uniqueIndex" json:"mission_key"` // 如 PRJ-001
+	Title          string     `gorm:"size:200;not null" json:"title"`
+	Description    string     `gorm:"type:text" json:"description"`
+	Type           string     `gorm:"size:20;not null;index" json:"type"` // feature/enhancement/bug
+	Priority       string     `gorm:"size:10;not null;index" json:"priority"` // P0/P1/P2/P3
+	Status         string     `gorm:"size:20;not null;index" json:"status"` // todo/in_progress/done/closed
+	AssigneeID     *uint      `gorm:"index" json:"assignee_id"`
+	ReporterID     uint       `gorm:"not null;index" json:"reporter_id"`
+	EstimatedHours float64    `gorm:"default:0" json:"estimated_hours"`
+	ActualHours    float64    `gorm:"default:0" json:"actual_hours"`
+	StartDate      *time.Time `json:"start_date"`
+	DueDate        *time.Time `gorm:"index" json:"due_date"`
+	CompletedAt    *time.Time `json:"completed_at"`
+	SortOrder      int        `gorm:"default:0" json:"sort_order"`
+	CreatedAt      time.Time  `gorm:"index" json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 
-	MissionList   MissionList          `gorm:"foreignKey:MissionListID" json:"mission_list,omitempty"`
-	MissionColumn *MissionColumn       `gorm:"foreignKey:MissionColumnID" json:"mission_column,omitempty"`
-	Project       Project              `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
-	Assignee      *parentModels.User   `gorm:"foreignKey:AssigneeID" json:"assignee,omitempty"`
-	Reporter      parentModels.User    `gorm:"foreignKey:ReporterID" json:"reporter,omitempty"`
-	Comments      []MissionComment     `gorm:"foreignKey:MissionID" json:"comments,omitempty"`
-	Attachments   []MissionAttachment  `gorm:"foreignKey:MissionID" json:"attachments,omitempty"`
-	Relations     []MissionRelation    `gorm:"foreignKey:SourceMissionID" json:"relations,omitempty"`
-	Logs          []MissionLog         `gorm:"foreignKey:MissionID" json:"logs,omitempty"`
-	Tags          []MissionTag         `gorm:"many2many:requirement_mission_tag_relations;" json:"tags,omitempty"`
+	MissionList MissionList          `gorm:"foreignKey:MissionListID" json:"mission_list,omitempty"`
+	Project     Project              `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	Assignee    *parentModels.User   `gorm:"foreignKey:AssigneeID" json:"assignee,omitempty"`
+	Reporter    parentModels.User    `gorm:"foreignKey:ReporterID" json:"reporter,omitempty"`
+	Comments    []MissionComment     `gorm:"foreignKey:MissionID" json:"comments,omitempty"`
+	Attachments []MissionAttachment  `gorm:"foreignKey:MissionID" json:"attachments,omitempty"`
+	Relations   []MissionRelation    `gorm:"foreignKey:SourceMissionID" json:"relations,omitempty"`
+	Logs        []MissionLog         `gorm:"foreignKey:MissionID" json:"logs,omitempty"`
+	Tags        []MissionTag         `gorm:"many2many:requirement_mission_tag_relations;" json:"tags,omitempty"`
 }
 
 // MissionComment 任务评论

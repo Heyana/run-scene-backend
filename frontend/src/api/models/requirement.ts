@@ -68,6 +68,7 @@ export interface MissionList {
   name: string;
   type: "sprint" | "version" | "module";
   description?: string;
+  color: string; // 列颜色
   status: "planning" | "active" | "completed";
   start_date?: string;
   end_date?: string;
@@ -80,7 +81,6 @@ export interface MissionList {
 export interface Mission {
   id: number;
   mission_list_id: number;
-  mission_column_id?: number; // 新增：所属列ID
   project_id: number;
   mission_key: string;
   title: string;
@@ -115,17 +115,6 @@ export interface Mission {
   tags?: MissionTag[];
   comments?: MissionComment[];
   attachments?: MissionAttachment[];
-}
-
-// 任务列（看板列）
-export interface MissionColumn {
-  id: number;
-  mission_list_id: number;
-  name: string;
-  color: string;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface MissionComment {
@@ -298,6 +287,7 @@ export const createMissionList = (data: {
   name: string;
   type: "sprint" | "version" | "module";
   description?: string;
+  color?: string;
   start_date?: string;
   end_date?: string;
 }) => {
@@ -410,34 +400,6 @@ export const deleteMissionAttachment = (
   return http.delete(
     `requirement/missions/${missionId}/attachments/${attachmentId}`,
   );
-};
-
-// ==================== 任务列管理 API ====================
-
-export const getMissionColumnList = (missionListId: number) => {
-  return http.get<MissionColumn[]>("requirement/mission-columns", {
-    params: { mission_list_id: missionListId },
-  });
-};
-
-export const createMissionColumn = (data: {
-  mission_list_id: number;
-  name: string;
-  color?: string;
-  sort_order?: number;
-}) => {
-  return http.post<MissionColumn>("requirement/mission-columns", data);
-};
-
-export const updateMissionColumn = (
-  id: number,
-  data: Partial<MissionColumn>,
-) => {
-  return http.put<MissionColumn>(`requirement/mission-columns/${id}`, data);
-};
-
-export const deleteMissionColumn = (id: number) => {
-  return http.delete(`requirement/mission-columns/${id}`);
 };
 
 // ==================== 统计 API ====================

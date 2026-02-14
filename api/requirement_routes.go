@@ -21,7 +21,6 @@ func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth, db 
 	projectController := requirement.NewProjectController()
 	missionListController := requirement.NewMissionListController()
 	missionController := requirement.NewMissionController()
-	missionColumnController := requirement.NewMissionColumnController(db)
 
 	// 需求管理路由组
 	requirementGroup := router.Group("/api/requirement")
@@ -52,7 +51,7 @@ func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth, db 
 			projects.GET("/:id/statistics", projectController.GetStatistics)
 		}
 
-		// 任务列表管理
+		// 任务列表管理（看板列）
 		missionLists := requirementGroup.Group("/mission-lists")
 		{
 			missionLists.GET("", missionListController.List)
@@ -60,16 +59,6 @@ func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth, db 
 			missionLists.GET("/:id", missionListController.GetDetail)
 			missionLists.PUT("/:id", missionListController.Update)
 			missionLists.DELETE("/:id", missionListController.Delete)
-		}
-
-		// 任务列管理（看板列）
-		missionColumns := requirementGroup.Group("/mission-columns")
-		{
-			missionColumns.GET("", missionColumnController.GetMissionColumnList)
-			missionColumns.POST("", missionColumnController.CreateMissionColumn)
-			missionColumns.GET("/:id", missionColumnController.GetMissionColumnDetail)
-			missionColumns.PUT("/:id", missionColumnController.UpdateMissionColumn)
-			missionColumns.DELETE("/:id", missionColumnController.DeleteMissionColumn)
 		}
 
 		// 任务管理
