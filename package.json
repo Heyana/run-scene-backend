@@ -10,8 +10,6 @@
     "test:mission": "go test ./tests -run TestMission -v",
     "test:coverage": "go test ./tests/... -cover",
     "test:coverage-html": "go test ./tests/... -coverprofile=coverage.out && go tool cover -html=coverage.out",
-    "test:results": "type tests\\results\\latest.json",
-    "test:results-all": "dir tests\\results\\test_result_*.json",
     "build": " wails build -trimpath -ldflags=\"-s -w\"  -upx ",
     "doc": "swag init -g docs/swagger.go",
     "set-sign": "codesign --force --deep --sign - ./build/bin/gift-manager.app",

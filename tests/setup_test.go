@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"go_wails_project_manager/config"
 	"go_wails_project_manager/database"
 	"go_wails_project_manager/logger"
@@ -33,21 +32,34 @@ func SetupTestEnvironment() {
 	
 	// 加载配置
 	config.LoadConfig()
-	config.LoadRequirementConfig()
-	
-	// 确保需求管理功能启用并设置默认值
-	if config.RequirementCfg == nil {
+	if err := config.LoadRequirementConfig(); err != nil {
+		logger.Log.Warnf("加载需求管理配置失败: %v，使用默认值", err)
+		// 手动设置默认配置
 		config.RequirementCfg = &config.RequirementConfig{}
-	}
-	config.RequirementCfg.Requirement.Enabled = true
-	
-	// 确保任务配置有默认值
-	if config.RequirementCfg.Requirement.Mission.DefaultStatus == "" {
+		config.RequirementCfg.Requirement.Enabled = true
 		config.RequirementCfg.Requirement.Mission.DefaultStatus = "todo"
-	}
-	if config.RequirementCfg.Requirement.Mission.DefaultPriority == "" {
 		config.RequirementCfg.Requirement.Mission.DefaultPriority = "P2"
+		config.RequirementCfg.Requirement.Mission.Statuses = []string{"todo", "in_progress", "done", "closed"}
+		config.RequirementCfg.Requirement.Mission.Priorities = []string{"P0", "P1", "P2", "P3"}
+		config.RequirementCfg.Requirement.Mission.Types = []string{"feature", "enhancement", "bug"}
+	} else {
+		// 确保需求管理功能启用
+		if config.RequirementCfg == nil {
+			config.RequirementCfg = &config.RequirementConfig{}
+		}
+		config.RequirementCfg.Requirement.Enabled = true
+		
+		// 确保任务配置有默认值
+		if config.RequirementCfg.Requirement.Mission.DefaultStatus == "" {
+			config.RequirementCfg.Requirement.Mission.DefaultStatus = "todo"
+		}
+		if config.RequirementCfg.Requirement.Mission.DefaultPriority == "" {
+			config.RequirementCfg.Requirement.Mission.DefaultPriority = "P2"
+		}
 	}
+	
+	logger.Log.Infof("任务默认状态: %s", config.RequirementCfg.Requirement.Mission.DefaultStatus)
+	logger.Log.Infof("任务默认优先级: %s", config.RequirementCfg.Requirement.Mission.DefaultPriority)
 	
 	// 初始化数据库
 	if err := database.Init(); err != nil {
@@ -76,17 +88,7 @@ func CleanupTestEnvironment() {
 // TestMain 测试入口
 func TestMain(m *testing.M) {
 	SetupTestEnvironment()
-	
-	// 初始化测试报告器
-	GlobalReporter = NewTestReporter()
-	
 	code := m.Run()
-	
-	// 保存测试结果
-	if err := GlobalReporter.SaveResults(); err != nil {
-		fmt.Printf("保存测试结果失败: %v\n", err)
-	}
-	
 	CleanupTestEnvironment()
 	os.Exit(code)
 }

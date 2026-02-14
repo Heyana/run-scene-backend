@@ -161,15 +161,3 @@ func CreateTestMissionList(t *testing.T, token string, projectID uint, name, lis
 	list := AssertSuccessWithData[requirementModels.MissionList](t, w, http.StatusOK)
 	return list
 }
-
-
-// RecordTestResult 记录测试结果
-func RecordTestResult(t *testing.T, name, status string, subTests []string) {
-	if GlobalReporter != nil {
-		errorMsg := ""
-		if status == "FAIL" && t.Failed() {
-			errorMsg = "测试失败，请查看详细日志"
-		}
-		GlobalReporter.AddResult(name, status, "0s", errorMsg, subTests)
-	}
-}
