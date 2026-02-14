@@ -90,6 +90,7 @@ func (mc *MissionController) Create(c *gin.Context) {
 // List 获取任务列表
 func (mc *MissionController) List(c *gin.Context) {
 	missionListID, _ := strconv.ParseUint(c.Query("mission_list_id"), 10, 32)
+	projectID, _ := strconv.ParseUint(c.Query("project_id"), 10, 32)
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
@@ -112,7 +113,20 @@ func (mc *MissionController) List(c *gin.Context) {
 		filters["keyword"] = keyword
 	}
 
-	missions, total, err := mc.service.ListMissions(uint(missionListID), page, pageSize, filters)
+	var missions interface{}
+	var total int64
+	var err error
+
+	// 支持按 project_id 或 mission_list_id 查询
+	if projectID > 0 {
+		missions, total, err = mc.service.ListMissionsByProject(uint(projectID), page, pageSize, filters)
+	} else if missionListID > 0 {
+		missions, total, err = mc.service.ListMissions(uint(missionListID), page, pageSize, filters)
+	} else {
+		response.BadRequest(c, "请提供 project_id 或 mission_list_id")
+		return
+	}
+
 	if err != nil {
 		response.InternalServerError(c, "查询失败")
 		return

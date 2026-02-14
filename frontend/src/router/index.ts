@@ -100,13 +100,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: "项目列表" },
       },
       {
-        path: "projects/:projectId/board",
+        path: "companies/:companyId/projects/:projectId/board",
         name: "MissionBoard",
         component: () => import("@/views/RequirementManagement/MissionBoard"),
         meta: { requiresAuth: true, title: "任务看板" },
       },
       {
-        path: "projects/:projectId/statistics",
+        path: "companies/:companyId/projects/:projectId/statistics",
         name: "ProjectStatistics",
         component: () => import("@/views/RequirementManagement/Statistics"),
         meta: { requiresAuth: true, title: "统计报表" },

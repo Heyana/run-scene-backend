@@ -98,7 +98,7 @@ func (ms *MissionService) generateMissionKey(projectID uint, projectKey string) 
 	return fmt.Sprintf("%s-%d", projectKey, count+1), nil
 }
 
-// ListMissions 获取任务列表
+// ListMissions 获取任务列表（按任务列表ID）
 func (ms *MissionService) ListMissions(missionListID uint, page, pageSize int, filters map[string]interface{}) ([]requirement.Mission, int64, error) {
 	var missions []requirement.Mission
 	var total int64
@@ -127,6 +127,43 @@ func (ms *MissionService) ListMissions(missionListID uint, page, pageSize int, f
 	offset := (page - 1) * pageSize
 	err := query.Offset(offset).Limit(pageSize).
 		Order("sort_order ASC").
+		Preload("Assignee").
+		Preload("Reporter").
+		Preload("Tags").
+		Find(&missions).Error
+
+	return missions, total, err
+}
+
+// ListMissionsByProject 获取任务列表（按项目ID）
+func (ms *MissionService) ListMissionsByProject(projectID uint, page, pageSize int, filters map[string]interface{}) ([]requirement.Mission, int64, error) {
+	var missions []requirement.Mission
+	var total int64
+
+	query := ms.db.Model(&requirement.Mission{}).Where("project_id = ?", projectID)
+
+	// 应用筛选条件
+	if status, ok := filters["status"]; ok && status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if priority, ok := filters["priority"]; ok && priority != "" {
+		query = query.Where("priority = ?", priority)
+	}
+	if assigneeID, ok := filters["assignee_id"]; ok && assigneeID != nil {
+		query = query.Where("assignee_id = ?", assigneeID)
+	}
+	if missionType, ok := filters["type"]; ok && missionType != "" {
+		query = query.Where("type = ?", missionType)
+	}
+	if keyword, ok := filters["keyword"]; ok && keyword != "" {
+		query = query.Where("title LIKE ? OR description LIKE ?", "%"+keyword.(string)+"%", "%"+keyword.(string)+"%")
+	}
+
+	query.Count(&total)
+
+	offset := (page - 1) * pageSize
+	err := query.Offset(offset).Limit(pageSize).
+		Order("mission_list_id ASC, sort_order ASC").
 		Preload("Assignee").
 		Preload("Reporter").
 		Preload("Tags").

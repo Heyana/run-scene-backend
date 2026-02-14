@@ -21,6 +21,8 @@ import {
   CalendarOutlined,
   TeamOutlined,
   CheckCircleOutlined,
+  HomeOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons-vue";
 import { api } from "@/api/api";
 import type { Project } from "@/api/models/requirement";
@@ -42,6 +44,20 @@ export default defineComponent({
       key: "",
       description: "",
     });
+
+    // 返回首页
+    const handleGoHome = () => {
+      router.push("/requirement-management/companies");
+    };
+
+    // 返回上一级（公司详情）
+    const handleGoBack = () => {
+      if (companyId.value) {
+        router.push(`/requirement-management/companies/${companyId.value}`);
+      } else {
+        router.push("/requirement-management/companies");
+      }
+    };
 
     // 加载项目列表
     const loadProjects = async () => {
@@ -90,12 +106,18 @@ export default defineComponent({
 
     // 查看项目看板
     const handleViewBoard = (project: Project) => {
-      router.push(`/requirement-management/projects/${project.id}/board`);
+      const cid = companyId.value || project.company_id;
+      router.push(
+        `/requirement-management/companies/${cid}/projects/${project.id}/board`,
+      );
     };
 
     // 查看项目统计
     const handleViewStatistics = (project: Project) => {
-      router.push(`/requirement-management/projects/${project.id}/statistics`);
+      const cid = companyId.value || project.company_id;
+      router.push(
+        `/requirement-management/companies/${cid}/projects/${project.id}/statistics`,
+      );
     };
 
     // 计算完成率
@@ -118,13 +140,23 @@ export default defineComponent({
             </Space>
           }
           extra={
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleCreate}
-            >
-              创建项目
-            </Button>
+            <Space>
+              <Button icon={<HomeOutlined />} onClick={handleGoHome}>
+                返回首页
+              </Button>
+              {companyId.value && (
+                <Button icon={<ArrowLeftOutlined />} onClick={handleGoBack}>
+                  上一级
+                </Button>
+              )}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleCreate}
+              >
+                创建项目
+              </Button>
+            </Space>
           }
         >
           {projects.value.length === 0 ? (

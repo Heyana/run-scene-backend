@@ -406,7 +406,7 @@ export const deleteMissionAttachment = (
 
 export const getProjectStatistics = (projectId?: number) => {
   const url = projectId
-    ? `requirement/statistics/projects/${projectId}`
+    ? `requirement/projects/${projectId}/statistics`
     : "requirement/statistics/all";
   return http.get<ProjectStatistics>(url);
 };

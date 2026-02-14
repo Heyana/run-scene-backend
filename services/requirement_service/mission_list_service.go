@@ -57,9 +57,17 @@ func (mls *MissionListService) ListMissionLists(projectID uint, status string) (
 		query = query.Where("status = ?", status)
 	}
 
-	err := query.Order("sort_order ASC").
-		Preload("Missions").
-		Find(&lists).Error
+	// 不再 Preload Missions，改为单独查询
+	err := query.Order("sort_order ASC").Find(&lists).Error
+
+	// 统计每个列表的任务数量
+	for i := range lists {
+		var count int64
+		mls.db.Model(&requirement.Mission{}).
+			Where("mission_list_id = ?", lists[i].ID).
+			Count(&count)
+		lists[i].MissionCount = int(count)
+	}
 
 	return lists, err
 }
