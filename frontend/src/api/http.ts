@@ -49,7 +49,7 @@ export const http = axios.create({
 http.interceptors.request.use(
   (config) => {
     config.headers.Authorization =
-      "Bearer " + localStorage.getItem(constant.clientToken);
+      "Bearer " + localStorage.getItem(constant.runSceneBackendToken);
     console.log(
       "Log-- ",
       config.headers.Authorization,
@@ -70,12 +70,16 @@ http.interceptors.response.use(
     console.log("Log-- ", msg, response, response.data.msg, "msg");
     if (msg === codeMap[401]) {
       localStorage.removeItem(constant.clientToken);
-      // router.push("/login");
-      ZMessageUtils.pop(
-        response.data.msg,
-        isOk(response.data.code) ? "success" : "danger",
-      );
-      return;
+      localStorage.removeItem("user");
+
+      // 跳转到登录页
+      const currentPath = window.location.hash.slice(1); // 移除 # 号
+      if (currentPath !== "/login") {
+        window.location.hash = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      }
+
+      ZMessageUtils.pop(response.data.msg || "未授权访问，请先登录", "danger");
+      return Promise.reject(new Error("未授权访问"));
     }
     // return response;
     if (msg && !isOk(response.data.code)) {

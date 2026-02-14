@@ -15,6 +15,7 @@ import (
 	"go_wails_project_manager/response"
 	ai3dService "go_wails_project_manager/services/ai3d"
 	"go_wails_project_manager/services/audit"
+	"go_wails_project_manager/services/auth"
 	"go_wails_project_manager/services/fileprocessor"
 	"go_wails_project_manager/services/task"
 
@@ -62,6 +63,19 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 	textureController := controllers.NewTextureController()
 	modelController := controllers.NewModelController(database.MustGetDB())
 	assetController := controllers.NewAssetController(database.MustGetDB())
+	
+	// 初始化JWT认证器
+	jwtAuth := middleware.NewJWTAuth()
+	
+	// 初始化权限计算器
+	permCalculator := auth.NewPermissionCalculatorService(database.MustGetDB())
+	middleware.SetPermissionCalculator(permCalculator)
+	
+	// 初始化认证和用户控制器
+	authController := controllers.NewAuthController(jwtAuth)
+	userController := controllers.NewUserController()
+	roleController := controllers.NewRoleController()
+	permissionController := controllers.NewPermissionController()
 	
 	// 创建文档控制器（传递文件处理器服务和配置）
 	var documentController *controllers.DocumentController
@@ -667,19 +681,75 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 
 		// TODO: 添加其他业务控制器和路由
 
-		// ==================== 认证路由（示例）====================
-		// 初始化JWT认证器
-		jwtAuth := middleware.NewJWTAuth()
-
+		// ==================== 认证路由 ====================
 		auth := api.Group("/auth")
 		{
-			// 登录（需要实现validateUser函数）
-			// auth.POST("/login", jwtAuth.LoginHandler(validateUser))
-			auth.POST("/refresh", jwtAuth.RefreshHandler()) // 刷新token
-			auth.POST("/logout", jwtAuth.LogoutHandler())   // 登出
+			auth.POST("/register", authController.Register)           // 注册
+			auth.POST("/login", authController.Login)                 // 登录
+			auth.POST("/logout", jwtAuth.AuthMiddleware(), authController.Logout) // 登出
+			auth.POST("/refresh", authController.RefreshToken)        // 刷新Token
+			auth.POST("/change-password", jwtAuth.AuthMiddleware(), authController.ChangePassword) // 修改密码
+			auth.GET("/profile", jwtAuth.AuthMiddleware(), authController.GetProfile) // 获取个人信息
+			auth.POST("/check-permission", jwtAuth.AuthMiddleware(), authController.CheckPermission) // 检查权限
 		}
 
-		// 需要认证的路由示例
+		// ==================== 用户管理路由 ====================
+		users := api.Group("/users")
+		users.Use(jwtAuth.AuthMiddleware())
+		{
+			users.GET("", middleware.RequirePermission("users", "read"), userController.List)
+			users.POST("", middleware.RequirePermission("users", "create"), userController.Create)
+			users.GET("/:id", middleware.RequirePermission("users", "read"), userController.GetDetail)
+			users.PUT("/:id", middleware.RequirePermission("users", "update"), userController.Update)
+			users.DELETE("/:id", middleware.RequirePermission("users", "delete"), userController.Delete)
+			users.POST("/:id/disable", middleware.RequirePermission("users", "admin"), userController.Disable)
+			users.POST("/:id/enable", middleware.RequirePermission("users", "admin"), userController.Enable)
+			users.POST("/:id/reset-password", middleware.RequirePermission("users", "admin"), userController.ResetPassword)
+			users.POST("/:id/roles", middleware.RequirePermission("users", "admin"), userController.AssignRoles)
+			users.GET("/:id/permissions", middleware.RequirePermission("users", "read"), userController.GetPermissions)
+		}
+
+		// ==================== 角色管理路由 ====================
+		roles := api.Group("/roles")
+		roles.Use(jwtAuth.AuthMiddleware())
+		{
+			roles.GET("", middleware.RequirePermission("roles", "read"), roleController.List)
+			roles.POST("", middleware.RequirePermission("roles", "create"), roleController.Create)
+			roles.GET("/:id", middleware.RequirePermission("roles", "read"), roleController.GetDetail)
+			roles.PUT("/:id", middleware.RequirePermission("roles", "update"), roleController.Update)
+			roles.DELETE("/:id", middleware.RequirePermission("roles", "delete"), roleController.Delete)
+			roles.POST("/:id/permissions", middleware.RequirePermission("roles", "admin"), roleController.AssignPermissions)
+			roles.GET("/:id/permissions", middleware.RequirePermission("roles", "read"), roleController.GetPermissions)
+		}
+
+		// ==================== 权限管理路由 ====================
+		permissions := api.Group("/permissions")
+		permissions.Use(jwtAuth.AuthMiddleware())
+		{
+			permissions.GET("", middleware.RequirePermission("permissions", "read"), permissionController.List)
+			permissions.POST("", middleware.RequirePermission("permissions", "create"), permissionController.Create)
+			permissions.GET("/:id", middleware.RequirePermission("permissions", "read"), permissionController.GetDetail)
+			permissions.PUT("/:id", middleware.RequirePermission("permissions", "update"), permissionController.Update)
+			permissions.DELETE("/:id", middleware.RequirePermission("permissions", "delete"), permissionController.Delete)
+			permissions.GET("/resources", middleware.RequirePermission("permissions", "read"), permissionController.GetResources)
+			permissions.GET("/actions", middleware.RequirePermission("permissions", "read"), permissionController.GetActions)
+		}
+
+		// ==================== 权限组管理路由 ====================
+		permissionGroups := api.Group("/permission-groups")
+		permissionGroups.Use(jwtAuth.AuthMiddleware())
+		{
+			permissionGroups.GET("", middleware.RequirePermission("permissions", "read"), permissionController.ListGroups)
+			permissionGroups.POST("", middleware.RequirePermission("permissions", "create"), permissionController.CreateGroup)
+			permissionGroups.GET("/:id", middleware.RequirePermission("permissions", "read"), permissionController.GetGroupDetail)
+			permissionGroups.PUT("/:id", middleware.RequirePermission("permissions", "update"), permissionController.UpdateGroup)
+			permissionGroups.DELETE("/:id", middleware.RequirePermission("permissions", "delete"), permissionController.DeleteGroup)
+			permissionGroups.POST("/:id/permissions", middleware.RequirePermission("permissions", "admin"), permissionController.AddPermissionsToGroup)
+			permissionGroups.DELETE("/:id/permissions/:permission_id", middleware.RequirePermission("permissions", "admin"), permissionController.RemovePermissionFromGroup)
+		}
+
+		// ==================== 认证路由（示例）====================
+		// 初始化JWT认证器
 		_ = jwtAuth // 使用jwtAuth.AuthMiddleware()保护需要认证的路由
 		// protectedGroup := api.Group("/protected")
 		// protectedGroup.Use(jwtAuth.AuthMiddleware())

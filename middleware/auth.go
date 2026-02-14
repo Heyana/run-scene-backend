@@ -202,6 +202,11 @@ func (j *JWTAuth) RoleMiddleware(roles ...string) gin.HandlerFunc {
 	}
 }
 
+// ExtractToken 从请求中提取token（公开方法）
+func (j *JWTAuth) ExtractToken(c *gin.Context) string {
+	return j.extractToken(c)
+}
+
 // extractToken 从请求中提取token
 func (j *JWTAuth) extractToken(c *gin.Context) string {
 	// 从Header提取

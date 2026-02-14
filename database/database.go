@@ -131,6 +131,12 @@ func RunMigrations() error {
 		// &meshy.MeshyTask{},
 		// AI蓝图相关表
 		&models.BlueprintHistory{},
+		// 账号和权限相关表
+		&models.User{},
+		&models.Role{},
+		&models.Permission{},
+		&models.PermissionGroup{},
+		&models.ResourcePermission{},
 	)
 	if err != nil {
 		return err
@@ -182,6 +188,11 @@ func RunMigrations() error {
 	// 运行一次性升级任务
 	if err := RunOnceUpgrade(db); err != nil {
 		logger.Log.Warnf("运行升级任务失败: %v", err)
+	}
+
+	// 初始化权限系统
+	if err := InitAuthSystem(db); err != nil {
+		logger.Log.Warnf("初始化权限系统失败: %v", err)
 	}
 
 	logger.Log.Info("数据库迁移完成")

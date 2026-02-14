@@ -28,6 +28,7 @@ export const constant = {
   isDev,
   mode,
   apiBase: base,
+  runSceneBackendToken: "run-scene-backend-token",
 };
 
 // 导出环境相关信息
