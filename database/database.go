@@ -142,6 +142,12 @@ func RunMigrations() error {
 		return err
 	}
 
+	// 初始化需求管理平台表
+	if err := InitRequirementTables(db); err != nil {
+		logger.Log.Warnf("需求管理平台表初始化失败: %v", err)
+		// 不返回错误，允许系统继续运行
+	}
+
 	// 创建贴图库索引
 	if err := createTextureIndexes(); err != nil {
 		logger.Log.Warnf("创建贴图库索引失败: %v", err)

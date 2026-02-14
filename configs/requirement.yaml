@@ -1,0 +1,108 @@
+# 需求管理平台配置
+
+requirement:
+  # 功能开关
+  enabled: true
+
+  # 任务配置
+  mission:
+    # 任务编号前缀长度
+    key_prefix_length: 3
+    # 默认优先级
+    default_priority: "P2"
+    # 默认状态
+    default_status: "todo"
+    # 状态列表
+    statuses:
+      - todo
+      - in_progress
+      - done
+      - closed
+    # 优先级列表
+    priorities:
+      - P0
+      - P1
+      - P2
+      - P3
+    # 任务类型
+    types:
+      - feature
+      - enhancement
+      - bug
+    # 自动调整优先级（临近截止日期）
+    auto_adjust_priority:
+      enabled: true
+      days_threshold: 1
+
+  # 附件配置
+  attachment:
+    # 允许的文件类型
+    allowed_types:
+      - .jpg
+      - .jpeg
+      - .png
+      - .gif
+      - .pdf
+      - .doc
+      - .docx
+      - .xls
+      - .xlsx
+      - .ppt
+      - .pptx
+      - .txt
+      - .md
+      - .zip
+    # 最大文件大小（字节）
+    max_size: 10485760 # 10MB
+    # 存储路径
+    storage_path: "uploads/requirement/attachments"
+
+  # 评论配置
+  comment:
+    # 最大长度
+    max_length: 5000
+    # 是否支持@提及
+    mention_enabled: true
+
+  # 权限配置
+  permission:
+    # 公司角色
+    company_roles:
+      - company_admin
+      - member
+      - viewer
+    # 项目角色
+    project_roles:
+      - project_admin
+      - developer
+      - viewer
+
+  # 通知配置
+  notification:
+    # 是否启用通知
+    enabled: true
+    # 通知类型
+    types:
+      - mission_assigned
+      - mission_commented
+      - mission_status_changed
+      - mission_mentioned
+
+  # 统计配置
+  statistics:
+    # 缓存时间（秒）
+    cache_ttl: 300
+    # 燃尽图数据点数量
+    burndown_points: 30
+
+  # 性能配置
+  performance:
+    # 分页大小
+    default_page_size: 20
+    max_page_size: 100
+    # 查询超时（秒）
+    query_timeout: 30
+    # 缓存配置
+    cache:
+      enabled: true
+      ttl: 300 # 5分钟

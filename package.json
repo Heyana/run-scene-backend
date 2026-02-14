@@ -4,11 +4,20 @@
   "description": "## About",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "go test ./tests/... -v",
+    "test:company": "go test ./tests -run TestCompany -v",
+    "test:project": "go test ./tests -run TestProject -v",
+    "test:mission": "go test ./tests -run TestMission -v",
+    "test:coverage": "go test ./tests/... -cover",
+    "test:coverage-html": "go test ./tests/... -coverprofile=coverage.out && go tool cover -html=coverage.out",
+    "test:results": "type tests\\results\\latest.json",
+    "test:results-all": "dir tests\\results\\test_result_*.json",
     "build": " wails build -trimpath -ldflags=\"-s -w\"  -upx ",
     "doc": "swag init -g docs/swagger.go",
     "set-sign": "codesign --force --deep --sign - ./build/bin/gift-manager.app",
-    "gobuild": "go build -trimpath -ldflags=\"-s -w\"   main.go"
+    "gobuild": "go build -trimpath -ldflags=\"-s -w\"   main.go",
+    "gobuild:dev": "go build -tags dev -o app_test.exe",
+    "dev": "air"
   },
   "keywords": [],
   "author": "Heyana",

@@ -64,6 +64,13 @@ func NewAppCore() (*AppCore, error) {
 		logger.Log.Info("项目管理配置加载成功")
 	}
 
+	// 加载需求管理配置
+	if err := config.LoadRequirementConfig(); err != nil {
+		logger.Log.Warnf("加载需求管理配置失败: %v，将使用默认配置", err)
+	} else {
+		logger.Log.Info("需求管理配置加载成功")
+	}
+
 	// 初始化日志
 	logger.Init()
 	log := logger.GetLogger()
