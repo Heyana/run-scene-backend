@@ -6,10 +6,11 @@ import (
 	"go_wails_project_manager/middleware"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // SetupRequirementRoutes 设置需求管理路由
-func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth) {
+func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth, db *gorm.DB) {
 	// 检查功能是否启用
 	if !config.IsRequirementEnabled() {
 		return
@@ -20,6 +21,7 @@ func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth) {
 	projectController := requirement.NewProjectController()
 	missionListController := requirement.NewMissionListController()
 	missionController := requirement.NewMissionController()
+	missionColumnController := requirement.NewMissionColumnController(db)
 
 	// 需求管理路由组
 	requirementGroup := router.Group("/api/requirement")
@@ -58,6 +60,16 @@ func SetupRequirementRoutes(router *gin.Engine, jwtAuth *middleware.JWTAuth) {
 			missionLists.GET("/:id", missionListController.GetDetail)
 			missionLists.PUT("/:id", missionListController.Update)
 			missionLists.DELETE("/:id", missionListController.Delete)
+		}
+
+		// 任务列管理（看板列）
+		missionColumns := requirementGroup.Group("/mission-columns")
+		{
+			missionColumns.GET("", missionColumnController.GetMissionColumnList)
+			missionColumns.POST("", missionColumnController.CreateMissionColumn)
+			missionColumns.GET("/:id", missionColumnController.GetMissionColumnDetail)
+			missionColumns.PUT("/:id", missionColumnController.UpdateMissionColumn)
+			missionColumns.DELETE("/:id", missionColumnController.DeleteMissionColumn)
 		}
 
 		// 任务管理

@@ -16,7 +16,7 @@ import (
 func setupCompanyRouter() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery()) // 添加恢复中间件
-	api.SetupRequirementRoutes(router, TestJWT)
+	api.SetupRequirementRoutes(router, TestJWT, TestDB)
 	return router
 }
 

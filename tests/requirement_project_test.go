@@ -16,7 +16,7 @@ import (
 func setupProjectRouter() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
-	api.SetupRequirementRoutes(router, TestJWT)
+	api.SetupRequirementRoutes(router, TestJWT, TestDB)
 	return router
 }
 

@@ -1,0 +1,104 @@
+.project-list-page {
+  .ant-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .project-card {
+    height: 100%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .project-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .project-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 20px;
+      }
+    }
+
+    .project-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2329;
+      margin: 8px 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .project-description {
+      font-size: 13px;
+      color: #646a73;
+      margin-bottom: 16px;
+      height: 40px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .project-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e5e6eb;
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #646a73;
+
+        .anticon {
+          font-size: 14px;
+        }
+      }
+    }
+
+    .project-progress {
+      margin-bottom: 16px;
+
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #646a73;
+        margin-bottom: 8px;
+      }
+    }
+
+    .project-actions {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid #e5e6eb;
+
+      .ant-btn-link {
+        padding: 0;
+        height: auto;
+        font-size: 13px;
+      }
+    }
+  }
+}

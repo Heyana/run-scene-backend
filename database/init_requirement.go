@@ -18,6 +18,7 @@ func InitRequirementTables(db *gorm.DB) error {
 		&requirement.Project{},
 		&requirement.ProjectMember{},
 		&requirement.MissionList{},
+		&requirement.MissionColumn{}, // 新增：任务列
 		&requirement.Mission{},
 		&requirement.MissionComment{},
 		&requirement.MissionAttachment{},

@@ -7,6 +7,7 @@ import * as auth from "./models/auth";
 import * as user from "./models/user";
 import * as role from "./models/role";
 import * as permission from "./models/permission";
+import * as requirement from "./models/requirement";
 
 export const api = {
   texture,
@@ -18,4 +19,5 @@ export const api = {
   user,
   role,
   permission,
+  requirement,
 };

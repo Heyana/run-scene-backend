@@ -66,6 +66,66 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/views/AuditLogs.tsx"),
   },
   {
+    path: "/requirement-management",
+    component: () => import("@/views/RequirementManagement"),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: "",
+        name: "RequirementManagement",
+        redirect: "/requirement-management/companies",
+      },
+      {
+        path: "companies",
+        name: "CompanyList",
+        component: () => import("@/views/RequirementManagement/CompanyList"),
+        meta: { requiresAuth: true, title: "公司列表" },
+      },
+      {
+        path: "companies/:companyId",
+        name: "CompanyDetail",
+        component: () => import("@/views/RequirementManagement/CompanyDetail"),
+        meta: { requiresAuth: true, title: "公司详情" },
+      },
+      {
+        path: "projects",
+        name: "AllProjects",
+        component: () => import("@/views/RequirementManagement/ProjectList"),
+        meta: { requiresAuth: true, title: "所有项目" },
+      },
+      {
+        path: "companies/:companyId/projects",
+        name: "CompanyProjects",
+        component: () => import("@/views/RequirementManagement/ProjectList"),
+        meta: { requiresAuth: true, title: "项目列表" },
+      },
+      {
+        path: "projects/:projectId/board",
+        name: "MissionBoard",
+        component: () => import("@/views/RequirementManagement/MissionBoard"),
+        meta: { requiresAuth: true, title: "任务看板" },
+      },
+      {
+        path: "projects/:projectId/statistics",
+        name: "ProjectStatistics",
+        component: () => import("@/views/RequirementManagement/Statistics"),
+        meta: { requiresAuth: true, title: "统计报表" },
+      },
+      {
+        path: "missions",
+        name: "AllMissions",
+        component: () => import("@/views/RequirementManagement/MissionBoard"),
+        meta: { requiresAuth: true, title: "所有任务" },
+      },
+      {
+        path: "statistics",
+        name: "AllStatistics",
+        component: () => import("@/views/RequirementManagement/Statistics"),
+        meta: { requiresAuth: true, title: "全局统计" },
+      },
+    ],
+  },
+  {
     path: "/user-management",
     name: "UserManagement",
     component: () => import("@/views/UserManagement"),

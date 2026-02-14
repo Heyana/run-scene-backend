@@ -759,5 +759,5 @@ func RegisterRoutes(router *gin.Engine, log *logrus.Logger, ai3dTaskService inte
 
 	}
 
-	SetupRequirementRoutes(router, jwtAuth)
+	SetupRequirementRoutes(router, jwtAuth, database.MustGetDB())
 }
